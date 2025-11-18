@@ -8,6 +8,7 @@ import {
   Put,
   Delete,
   Query,
+  Logger,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -18,6 +19,7 @@ export class ProductsController {
 
   @Post()
   create(@Body() dto: CreateProductDto) {
+    // return '123';
     return this.productsService.create(dto);
   }
 

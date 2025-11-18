@@ -14,71 +14,69 @@ model Role {
   name        String  @unique
   description String?
 
-  users       User[]
+  users User[]
 }
 
 /// تمام کاربران سیستم
 model User {
-  id              String             @id @default(uuid())
-  email           String             @unique
-  passwordHash    String
-  name            String?
-  phone           String?
-  isActive        Boolean            @default(true)
-  metadata        Json?
+  id           String  @id @default(uuid())
+  email        String  @unique
+  passwordHash String
+  name         String?
+  phone        String?
+  isActive     Boolean @default(true)
+  metadata     Json?
 
-  roleId          Int
-  role            Role               @relation(fields: [roleId], references: [id])
+  roleId Int
+  role   Role @relation(fields: [roleId], references: [id])
 
-  businesses      Business[]
-  orders          Order[]
-  reviews         Review[]
+  businesses        Business[]
+  orders            Order[]
+  reviews           Review[]
   stockReservations StockReservation[]
-  auditLogs       AuditLog[]
+  auditLogs         AuditLog[]
 
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 /// کسب‌وکار (فروشنده)
 model Business {
-  id           String            @id @default(uuid())
-  title        String
-  slug         String            @unique
-  description  String?
-  address      Json?
-  phone        String?
-  website      String?
-  isActive     Boolean           @default(true)
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+  address     Json?
+  phone       String?
+  isActive    Boolean @default(true)
 
-  ownerId      String
-  owner        User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
-  products     Product[]
-  categories   BusinessCategory[]
-  orders       Order[]
+  products   Product[]
+  categories BusinessCategory[]
+  orders     Order[]
 
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 /// دسته‌بندی سراسری محصولات (درختی)
 model Category {
-  id          String            @id @default(uuid())
+  id          String  @id @default(uuid())
   name        String
-  slug        String            @unique
+  slug        String  @unique
   description String?
-  isActive    Boolean           @default(true)
+  isActive    Boolean @default(true)
 
-  parentId    String?
-  parent      Category?         @relation("CategoryToCategory", fields: [parentId], references: [id])
-  children    Category[]        @relation("CategoryToCategory")
+  parentId String?
+  parent   Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryToCategory")
 
-  products    Product[]
+  products           Product[]
   businessCategories BusinessCategory[]
 
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 /// رابطه چندبه‌چند بین Business و Category
@@ -86,42 +84,40 @@ model BusinessCategory {
   businessId String
   categoryId String
 
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@id([businessId, categoryId])
 }
 
 /// محصول
 model Product {
-  id             String            @id @default(uuid())
-  title          String
-  slug           String            @unique
-  description    String?
+  id               String   @id @default(uuid())
+  title            String
+  description      String?
   shortDescription String?
-  price          Decimal           @db.Decimal(12, 2)
-  currency       String            @default("USD")
-  compareAtPrice Decimal?          @db.Decimal(12, 2)
-  sku            String?
-  stockQuantity  Int               @default(0)
-  manageStock    Boolean           @default(true)
-  isActive       Boolean           @default(true)
-  metadata       Json?
+  price            Decimal  @db.Decimal(12, 2)
+  compareAtPrice   Decimal? @db.Decimal(12, 2)
+  sku              String?
+  stockQuantity    Int      @default(0)
+  manageStock      Boolean  @default(true)
+  isActive         Boolean  @default(true)
+  metadata         Json?
 
-  businessId     String
-  business       Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
-  categoryId     String?
-  category       Category?         @relation(fields: [categoryId], references: [id])
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
 
-  images         ProductImage[]
-  variants       ProductVariant[]
-  orderItems     OrderItem[]
-  reviews        Review[]
+  images            ProductImage[]
+  variants          ProductVariant[]
+  orderItems        OrderItem[]
+  reviews           Review[]
   stockReservations StockReservation[]
 
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([businessId])
   @@index([categoryId])
@@ -129,66 +125,66 @@ model Product {
 
 /// تصاویر محصول
 model ProductImage {
-  id         String     @id @default(uuid())
-  url        String
-  altText    String?
-  position   Int        @default(0)
-  metadata   Json?
+  id       String  @id @default(uuid())
+  url      String
+  altText  String?
+  position Int     @default(0)
+  metadata Json?
 
-  productId  String
-  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  createdAt  DateTime   @default(now())
+  createdAt DateTime @default(now())
 }
 
 /// واریانت محصول (رنگ/سایز و ...)
 model ProductVariant {
-  id            String            @id @default(uuid())
-  sku           String?           @unique
+  id            String   @id @default(uuid())
+  sku           String?  @unique
   title         String?
-  priceOverride Decimal?          @db.Decimal(12, 2)
-  stockQuantity Int               @default(0)
-  manageStock   Boolean           @default(true)
+  priceOverride Decimal? @db.Decimal(12, 2)
+  stockQuantity Int      @default(0)
+  manageStock   Boolean  @default(true)
   metadata      Json?
 
-  productId     String
-  product       Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   orderItems        OrderItem[]
   stockReservations StockReservation[]
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([productId])
 }
 
 /// سفارش
 model Order {
-  id             String           @id @default(uuid())
-  status         String           @default("pending")
-  subtotal       Decimal?         @db.Decimal(12, 2)
-  shippingAmount Decimal?         @db.Decimal(12, 2)
-  taxAmount      Decimal?         @db.Decimal(12, 2)
-  totalAmount    Decimal          @db.Decimal(12, 2)
-  currency       String           @default("USD")
-  paymentMethod  String?
-  paymentStatus  String?
+  id              String   @id @default(uuid())
+  status          String   @default("pending")
+  subtotal        Decimal? @db.Decimal(12, 2)
+  shippingAmount  Decimal? @db.Decimal(12, 2)
+  taxAmount       Decimal? @db.Decimal(12, 2)
+  totalAmount     Decimal  @db.Decimal(12, 2)
+  currency        String   @default("USD")
+  paymentMethod   String?
+  paymentStatus   String?
   shippingAddress Json?
   billingAddress  Json?
-  metadata       Json?
+  metadata        Json?
 
-  userId         String
-  user           User             @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-  businessId     String?
-  business       Business?        @relation(fields: [businessId], references: [id])
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id])
 
-  items          OrderItem[]
+  items             OrderItem[]
   stockReservations StockReservation[]
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([businessId])
@@ -196,22 +192,22 @@ model Order {
 
 /// آیتم‌های سفارش
 model OrderItem {
-  id          String      @id @default(uuid())
-  quantity    Int
-  unitPrice   Decimal     @db.Decimal(12, 2)
-  totalPrice  Decimal     @db.Decimal(12, 2)
-  metadata    Json?
+  id         String  @id @default(uuid())
+  quantity   Int
+  unitPrice  Decimal @db.Decimal(12, 2)
+  totalPrice Decimal @db.Decimal(12, 2)
+  metadata   Json?
 
-  orderId     String
-  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  productId   String
-  product     Product     @relation(fields: [productId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
 
-  variantId   String?
-  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
 
-  createdAt   DateTime    @default(now())
+  createdAt DateTime @default(now())
 
   @@index([orderId])
   @@index([productId])
@@ -220,43 +216,43 @@ model OrderItem {
 
 /// نظرات محصول
 model Review {
-  id         String    @id @default(uuid())
+  id         String   @id @default(uuid())
   rating     Int
   title      String?
   body       String?
-  isApproved Boolean   @default(false)
-  createdAt  DateTime  @default(now())
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
-  productId  String
-  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  userId     String
-  user       User      @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
+  @@unique([productId, userId])
   @@index([productId])
   @@index([userId])
-  @@unique([productId, userId])
 }
 
 /// رزرو موجودی
 model StockReservation {
-  id          String          @id @default(uuid())
-  quantity    Int
-  status      String          @default("active") // active, released, consumed, expired
-  expiresAt   DateTime
-  createdAt   DateTime        @default(now())
+  id        String   @id @default(uuid())
+  quantity  Int
+  status    String   @default("active") // active, released, consumed, expired
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
-  productId   String
-  product     Product         @relation(fields: [productId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
 
-  variantId   String?
-  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
 
-  userId      String
-  user        User            @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-  orderId     String?
-  order       Order?          @relation(fields: [orderId], references: [id])
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id])
 
   @@index([productId])
   @@index([variantId])
@@ -266,12 +262,12 @@ model StockReservation {
 
 /// لاگ تغییرات (اختیاری)
 model AuditLog {
-  id          String   @id @default(uuid())
-  entityType  String
-  entityId    String
-  action      String
-  diff        Json?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  entityType String
+  entityId   String
+  action     String
+  diff       Json?
+  createdAt  DateTime @default(now())
 
   performedById String?
   performedBy   User?   @relation(fields: [performedById], references: [id])
