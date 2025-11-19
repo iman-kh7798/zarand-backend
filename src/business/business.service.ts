@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
@@ -13,8 +9,6 @@ export class BusinessService {
 
   async create(dto: CreateBusinessDto) {
     return await this.prisma.business.create({
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       data: {
         title: dto.title,
         description: dto.description,

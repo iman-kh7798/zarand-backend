@@ -20,10 +20,10 @@ model Role {
 /// تمام کاربران سیستم
 model User {
   id           String  @id @default(uuid())
-  email        String  @unique
+  phone        String  @unique
   passwordHash String
   name         String?
-  phone        String?
+  email        String?
   isActive     Boolean @default(true)
   metadata     Json?
 
@@ -271,4 +271,15 @@ model AuditLog {
 
   performedById String?
   performedBy   User?   @relation(fields: [performedById], references: [id])
+}
+
+model Otp {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([phone])
 }
