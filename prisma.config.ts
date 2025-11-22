@@ -1,4 +1,5 @@
-import { defineConfig } from 'prisma/config';
+import 'dotenv/config';
+import { defineConfig, env } from 'prisma/config';
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
@@ -7,6 +8,6 @@ export default defineConfig({
   },
   engine: 'classic',
   datasource: {
-    url: 'postgresql://admin:admin@localhost:5432/zarand_db?schema=public',
+    url: env('DATABASE_URL'),
   },
 });
