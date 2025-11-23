@@ -1,22 +1,75 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import {
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateBusinessDto } from './dto/create-business.dto';
+import {
+  CreateBusinessByUserDto,
+  CreateBusinessDto,
+} from './dto/create-business.dto';
 import { UpdateBusinessDto } from './dto/update-business.dto';
+import { UserService } from 'src/users/users.service';
 
 @Injectable()
 export class BusinessService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private users: UserService,
+  ) {}
 
   async create(dto: CreateBusinessDto) {
-    return await this.prisma.business.create({
-      data: {
-        title: dto.title,
-        description: dto.description,
-        address: dto.address as string,
+    try {
+      return await this.prisma.business.create({
+        data: {
+          title: dto.title,
+          description: dto.description,
+          address: dto.address as string,
+          owner: { connect: { id: dto.ownerId } },
+        },
+      });
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException('USER_NOT_EXISTS');
+      }
+      throw error;
+    }
+  }
+
+  async createBussinessByUser(dto: CreateBusinessByUserDto) {
+    let user;
+
+    try {
+      user = await this.users.create({
         phone: dto.phone,
-        owner: { connect: { id: dto.ownerId } },
-      },
-    });
+        roleId: 2,
+        password: dto.password,
+        name: dto.name,
+        email: dto.email,
+      });
+    } catch (err) {
+      console.log(err);
+    }
+    if (!user) {
+      throw new ServiceUnavailableException('UNABLE_TOO_CREATE_USER');
+    }
+    try {
+      return await this.prisma.business.create({
+        data: {
+          title: dto.title,
+          description: dto.description,
+          address: dto.address as string,
+          phone: dto.phone,
+          owner: { connect: { id: user.roleId } },
+        },
+      });
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException('USER_NOT_EXISTS');
+      }
+      throw error;
+    }
   }
 
   async findAll() {
@@ -38,7 +91,7 @@ export class BusinessService {
     });
 
     if (!business) {
-      throw new NotFoundException('Business not found');
+      throw new NotFoundException('BUSSINESS_NOT_FOUND');
     }
 
     return business;
@@ -51,7 +104,6 @@ export class BusinessService {
         title: dto.title,
         description: dto.description,
         address: dto.address,
-        phone: dto.phone,
         owner: dto.ownerId ? { connect: { id: dto.ownerId } } : undefined,
       },
     });

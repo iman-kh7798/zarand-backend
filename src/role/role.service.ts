@@ -1,20 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateRoleDto } from './dto/create-role.dto';
-import { UpdateRoleDto } from './dto/update-role.dto';
+// import { CreateRoleDto } from './dto/create-role.dto';
+// import { UpdateRoleDto } from './dto/update-role.dto';
 
 @Injectable()
 export class RoleService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateRoleDto) {
-    return this.prisma.role.create({
-      data: {
-        name: dto.name,
-        description: dto.description,
-      },
-    });
-  }
+  // async create(dto: CreateRoleDto) {
+  //   return this.prisma.role.create({
+  //     data: {
+  //       name: dto.name,
+  //       description: dto.description,
+  //     },
+  //   });
+  // }
 
   async findAll() {
     return this.prisma.role.findMany({
@@ -39,19 +39,19 @@ export class RoleService {
     return role;
   }
 
-  async update(id: number, dto: UpdateRoleDto) {
-    return this.prisma.role.update({
-      where: { id },
-      data: {
-        name: dto.name,
-        description: dto.description,
-      },
-    });
-  }
+  // async update(id: number, dto: UpdateRoleDto) {
+  //   return this.prisma.role.update({
+  //     where: { id },
+  //     data: {
+  //       name: dto.name,
+  //       description: dto.description,
+  //     },
+  //   });
+  // }
 
-  async remove(id: number) {
-    return this.prisma.role.delete({
-      where: { id },
-    });
-  }
+  // async remove(id: number) {
+  //   return this.prisma.role.delete({
+  //     where: { id },
+  //   });
+  // }
 }

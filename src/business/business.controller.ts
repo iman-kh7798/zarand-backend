@@ -8,16 +8,24 @@ import {
   Delete,
 } from '@nestjs/common';
 import { BusinessService } from './business.service';
-import { CreateBusinessDto } from './dto/create-business.dto';
+import {
+  CreateBusinessByUserDto,
+  CreateBusinessDto,
+} from './dto/create-business.dto';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 
 @Controller('business')
 export class BusinessController {
   constructor(private readonly businessService: BusinessService) {}
 
-  @Post()
+  @Post('by-owner')
   create(@Body() dto: CreateBusinessDto) {
     return this.businessService.create(dto);
+  }
+
+  @Post()
+  createBusinessByUser(@Body() dto: CreateBusinessByUserDto) {
+    return this.businessService.createBussinessByUser(dto);
   }
 
   @Get()
