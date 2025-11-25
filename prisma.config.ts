@@ -7,6 +7,6 @@ export default defineConfig({
   },
   engine: 'classic',
   datasource: {
-    url: 'postgresql://postgres:admin@localhost:5432/z-db?schema=public',
+    url: env('DATABASE_URL'),
   },
 });

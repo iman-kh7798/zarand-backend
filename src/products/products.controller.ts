@@ -8,18 +8,13 @@ import {
   Put,
   Delete,
   Query,
-  Logger,
-  UseGuards,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
-import { JwtAuthGuard } from 'src/auth/jwt.authGuard';
-
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
-  @UseGuards(JwtAuthGuard)
   @Post()
   create(@Body() dto: CreateProductDto) {
     // return '123';
@@ -29,10 +24,9 @@ export class ProductsController {
   @Get()
   findAll(@Query('businessId') businessId?: string) {
     if (businessId) {
-      // return this.productsService.findAllByBusiness(businessId);
+      return this.productsService.findAllByBusiness(businessId);
     }
-    // همه محصولات (مثلاً برای ادمین)
-    // return this.productsService.findAllByBusiness(businessId);
+    return this.productsService.findAll();
   }
 
   @Get(':id')
