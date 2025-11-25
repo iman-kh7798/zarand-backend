@@ -8,18 +8,13 @@ import {
   Put,
   Delete,
   Query,
-  Logger,
-  UseGuards,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
-import { JwtAuthGuard } from 'src/auth/jwt.authGuard';
-
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
-  @UseGuards(JwtAuthGuard)
   @Post()
   create(@Body() dto: CreateProductDto) {
     // return '123';
