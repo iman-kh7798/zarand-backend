@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
@@ -49,11 +51,14 @@ export class BusinessService {
         email: dto.email,
       });
     } catch (err) {
-      console.log(err);
+      if (err.code === 'P2002') {
+        throw new BadRequestException('PHONE_EXISTS');
+      }
     }
     if (!user) {
       throw new ServiceUnavailableException('UNABLE_TOO_CREATE_USER');
     }
+
     try {
       return await this.prisma.business.create({
         data: {
@@ -61,7 +66,7 @@ export class BusinessService {
           description: dto.description,
           address: dto.address as string,
           phone: dto.phone,
-          owner: { connect: { id: user.roleId } },
+          owner: { connect: { id: user.id } },
         },
       });
     } catch (error: any) {

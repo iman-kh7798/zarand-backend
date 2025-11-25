@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import { IsString, IsOptional, IsNotEmpty, IsUUID } from 'class-validator';
-import { CreateUserDto } from 'src/users/dto/create-user.dto';
+import {
+  IsString,
+  IsOptional,
+  IsNotEmpty,
+  IsUUID,
+  IsEmail,
+} from 'class-validator';
 
 export class CreateBusinessDto {
   @IsString()
@@ -19,7 +24,22 @@ export class CreateBusinessDto {
   @IsNotEmpty()
   ownerId: string;
 }
-export class CreateBusinessByUserDto extends CreateUserDto {
+export class CreateBusinessByUserDto {
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  password: string; // از bcrypt هش می‌کنیم بعد ذخیره می‌کنیم
+
+  @IsString()
+  name?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  phone: string;
+
   @IsString()
   @IsNotEmpty()
   title: string;

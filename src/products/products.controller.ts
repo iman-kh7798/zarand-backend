@@ -29,10 +29,9 @@ export class ProductsController {
   @Get()
   findAll(@Query('businessId') businessId?: string) {
     if (businessId) {
-      // return this.productsService.findAllByBusiness(businessId);
+      return this.productsService.findAllByBusiness(businessId);
     }
-    // همه محصولات (مثلاً برای ادمین)
-    // return this.productsService.findAllByBusiness(businessId);
+    return this.productsService.findAll();
   }
 
   @Get(':id')
