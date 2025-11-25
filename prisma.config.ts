@@ -1,4 +1,4 @@
-import { defineConfig } from 'prisma/config';
+import { defineConfig, env } from 'prisma/config';
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
@@ -7,6 +7,6 @@ export default defineConfig({
   },
   engine: 'classic',
   datasource: {
-    url: 'postgresql://admin:admin@localhost:5432/zarand_db?schema=public',
+    url: 'postgresql://postgres:admin@localhost:5432/z-db?schema=public',
   },
 });

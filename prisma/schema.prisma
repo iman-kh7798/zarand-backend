@@ -1,7 +1,7 @@
 // schema.prisma
 datasource db {
   provider = "postgresql"
-  url      = "postgresql://admin:admin@localhost:5432/zarand_db?schema=public"
+  url      = "postgresql://postgres:admin@localhost:5432/z-db?schema=public"
 }
 
 generator client {
