@@ -6,9 +6,11 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { CreateCategory } from './categories.dto';
 import { CategoriesService } from './categories.service';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('categories')
 export class CategoriesController {
@@ -22,14 +24,17 @@ export class CategoriesController {
   @Get(':id')
   findOne(@Param('id') id: string) {}
 
+  @UseGuards(AuthGuard)
   @Post()
   create(@Body() createCategory: CreateCategory) {
     this.categoriesService.create(createCategory);
   }
 
+  @UseGuards(AuthGuard)
   @Patch()
   update() {}
 
+  @UseGuards(AuthGuard)
   @Delete()
   delete() {}
 }

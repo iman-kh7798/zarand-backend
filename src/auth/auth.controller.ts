@@ -1,17 +1,29 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private authService: AuthService) {}
 
-  @Post('send-otp')
-  sendOtp(@Body('phone') phone: string) {
-    return this.authService.sendOtp(phone);
+  @HttpCode(HttpStatus.OK)
+  @Post('login')
+  signIn(@Body() signInDto: Record<string, string>) {
+    return this.authService.signIn(signInDto.phone, signInDto.password);
   }
 
-  @Post('verify-otp')
-  verifyOtp(@Body('phone') phone: string, @Body('code') code: string) {
-    return this.authService.verifyOtp(phone, code);
+  @UseGuards(AuthGuard)
+  @Get('profile')
+  getProfile(@Request() req) {
+    return req.user;
   }
 }
