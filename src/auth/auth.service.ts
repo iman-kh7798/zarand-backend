@@ -1,75 +1,20 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
+import { UserService } from 'src/users/users.service';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private prisma: PrismaService,
-    private jwt: JwtService,
+    private usersService: UserService,
+    private jwtService: JwtService,
   ) {}
 
-  // مرحله ۱: ارسال OTP
-  async sendOtp(phone: string) {
-    const code = Math.floor(100000 + Math.random() * 900000).toString(); // ۶ رقمی
-    const expires = new Date(Date.now() + 2 * 60 * 1000); // دو دقیقه
-
-    await this.prisma.otp.create({
-      data: {
-        phone,
-        code,
-        expiresAt: expires,
-      },
-    });
-
-    // فعلاً برای تست خود کد رو برگردونیم (بعداً SMS Gateway)
-    return { phone, code, expiresAt: expires };
-  }
-
-  // مرحله ۲: تایید OTP
-  async verifyOtp(phone: string, code: string) {
-    const record = await this.prisma.otp.findFirst({
-      where: { phone },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (!record) {
-      throw new UnauthorizedException('OTP not found');
-    }
-
-    if (record.code !== code) {
-      throw new UnauthorizedException('Invalid OTP code');
-    }
-
-    if (record.expiresAt < new Date()) {
-      throw new UnauthorizedException('OTP expired');
-    }
-
-    let user = await this.prisma.user.findUnique({
-      where: { phone },
-    });
-
-    // اگر یوزر وجود ندارد → بسازیم
+  async signIn(phone: string, pass: string): Promise<any> {
+    const user = await this.usersService.validateUser(phone, pass);
     if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          phone,
-          passwordHash: '',
-          role: { connect: { id: 3 } }, // customer
-        },
-      });
+      throw new UnauthorizedException();
     }
-
-    // تولید JWT
-    const token = await this.jwt.signAsync({
-      sub: user.id,
-      phone: user.phone,
-      roleId: user.roleId,
-    });
-
-    return {
-      access_token: token,
-      user,
-    };
+    const payload = { sub: user.id, phone: user.phone, role: user.roleId };
+    return { access_token: await this.jwtService.signAsync(payload) };
   }
 }
