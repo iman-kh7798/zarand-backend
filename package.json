@@ -18,16 +18,20 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "push": "prisma db push",
+    "deploy": "prisma migrate deploy",
+    "generate": "prisma generate"
   },
   "dependencies": {
+    "@nestjs/cli": "^11.0.10",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "^11.0.1",
-    "@nestjs/cli": "^11.0.10",
     "@nestjs/mapped-types": "*",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@prisma/adapter-mariadb": "^7.1.0",
     "@prisma/client": "^6.19.0",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
