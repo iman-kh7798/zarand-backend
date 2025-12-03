@@ -14,7 +14,7 @@ import {
   CreateBusinessDto,
 } from './dto/create-business.dto';
 import { UpdateBusinessDto } from './dto/update-business.dto';
-import { AuthGuard } from '@nestjs/passport';
+import { AuthGuard } from 'src/auth/auth.guard';
 
 @Controller('business')
 export class BusinessController {

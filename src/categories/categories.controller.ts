@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { CreateCategory } from './categories.dto';
 import { CategoriesService } from './categories.service';
-import { AuthGuard } from '@nestjs/passport';
+import { AuthGuard } from 'src/auth/auth.guard';
 
 @Controller('categories')
 export class CategoriesController {
