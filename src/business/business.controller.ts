@@ -26,7 +26,6 @@ export class BusinessController {
     return this.businessService.create(dto);
   }
 
-  @UseGuards(AuthGuard)
   @Post()
   createBusinessByUser(@Body() dto: CreateBusinessByUserDto) {
     return this.businessService.createBussinessByUser(dto);

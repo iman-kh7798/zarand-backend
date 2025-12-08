@@ -55,6 +55,7 @@ export class BusinessService {
         throw new BadRequestException('PHONE_EXISTS');
       }
     }
+
     if (!user) {
       throw new ServiceUnavailableException('UNABLE_TOO_CREATE_USER');
     }
