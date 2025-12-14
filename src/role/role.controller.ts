@@ -9,13 +9,13 @@ import { Role } from './role.enum';
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
-  @Roles(Role.Admin)
+  @Roles(Role.ADMIN)
   @Get()
   findAll() {
     return this.roleService.findAll();
   }
 
-  @Roles(Role.Admin)
+  @Roles(Role.ADMIN)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.roleService.findOne(+id);

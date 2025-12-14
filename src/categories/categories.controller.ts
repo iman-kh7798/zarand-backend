@@ -25,22 +25,24 @@ export class CategoriesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {}
+  findOne(@Param('id') id: string) {
+    // return this.categoriesService.findOne(id);
+  }
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Business)
+  @Roles(Role.ADMIN)
   @Post()
   create(@Body() createCategory: CreateCategory) {
     this.categoriesService.create(createCategory);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Business)
+  @Roles(Role.ADMIN)
   @Patch()
   update() {}
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Business)
+  @Roles(Role.ADMIN)
   @Delete()
   delete() {}
 }

@@ -22,7 +22,7 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Business)
+  @Roles(Role.ADMIN)
   @Post()
   create(@Body() dto: CreateProductDto) {
     return this.productsService.create(dto);
@@ -40,17 +40,17 @@ export class ProductsController {
   findOne(@Param('id') id: string) {
     return this.productsService.findOne(id);
   }
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Business)
-  @Put(':id')
-  update(@Param('id') id: string, @Body() dto: Partial<CreateProductDto>) {
-    return this.productsService.update(id, dto);
-  }
+  // @UseGuards(AuthGuard, RolesGuard)
+  // @Roles(Role.Business)
+  // @Put(':id')
+  // update(@Param('id') id: string, @Body() dto: Partial<CreateProductDto>) {
+  //   return this.productsService.update(id, dto);
+  // }
 
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Business)
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.productsService.remove(id);
-  }
+  // @UseGuards(AuthGuard, RolesGuard)
+  // @Roles(Role.Business)
+  // @Delete(':id')
+  // remove(@Param('id') id: string) {
+  //   return this.productsService.remove(id);
+  // }
 }
