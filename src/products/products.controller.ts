@@ -9,13 +9,18 @@ import {
   Delete,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Req,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 import { RolesGuard } from 'src/role/role.guard';
 import { Roles } from 'src/role/role.decorator';
 import { Role } from 'src/role/role.enum';
+import { FileInterceptor } from '@nestjs/platform-express';
 // @UseGuards(RolesGuard)
 @Controller('products')
 export class ProductsController {
@@ -24,7 +29,11 @@ export class ProductsController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Business)
   @Post()
-  create(@Body() dto: CreateProductDto) {
+  @UseInterceptors(FileInterceptor(`product_pic_${Date.now()}`))
+  create(
+    @Body() dto: CreateProductDto,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
     return this.productsService.create(dto);
   }
 

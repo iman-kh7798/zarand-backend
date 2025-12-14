@@ -7,6 +7,8 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
+  Req,
 } from '@nestjs/common';
 import { BusinessService } from './business.service';
 import {
@@ -22,6 +24,13 @@ import { Role } from 'src/role/role.enum';
 @Controller('business')
 export class BusinessController {
   constructor(private readonly businessService: BusinessService) {}
+
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.Business)
+  @Get('by-owner')
+  findByOwnerId(@Req() req) {
+    return this.businessService.findByOwnerId(req.user.sub);
+  }
 
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Admin)

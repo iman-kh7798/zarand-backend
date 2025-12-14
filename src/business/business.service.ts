@@ -103,6 +103,21 @@ export class BusinessService {
     return business;
   }
 
+  async findByOwnerId(ownerId: string) {
+    const business = await this.prisma.business.findMany({
+      where: { ownerId },
+      include: {
+        owner: true,
+      },
+    });
+
+    if (!business) {
+      throw new NotFoundException('BUSSINESS_NOT_FOUND');
+    }
+
+    return business;
+  }
+
   async update(id: string, dto: UpdateBusinessDto) {
     return await this.prisma.business.update({
       where: { id },
