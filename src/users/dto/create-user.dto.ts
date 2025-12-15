@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
 } from 'class-validator';
 
 export class CreateUserDto {
@@ -19,8 +20,9 @@ export class CreateUserDto {
   @IsString()
   name?: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @Matches(/^(\+98|0098|0)?9\d{9}$/, {
+    message: 'phone is not valid',
+  })
   phone: string;
 
   @IsNumber()

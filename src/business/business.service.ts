@@ -1,65 +1,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateBusinessDto } from './dto/create-business.dto';
 import {
-  CreateBusinessByUserDto,
-  CreateBusinessDto,
-} from './dto/create-business.dto';
-import { UpdateBusinessDto } from './dto/update-business.dto';
-import { UserService } from 'src/users/users.service';
+  UpdateBusinessDto,
+  UpdateBusinessStatusDto,
+} from './dto/update-business.dto';
 
 @Injectable()
 export class BusinessService {
-  constructor(
-    private prisma: PrismaService,
-    private users: UserService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateBusinessDto) {
-    try {
-      return await this.prisma.business.create({
-        data: {
-          title: dto.title,
-          description: dto.description,
-          address: dto.address as string,
-          owner: { connect: { id: dto.ownerId } },
-        },
-      });
-    } catch (error: any) {
-      if (error.code === 'P2025') {
-        throw new NotFoundException('USER_NOT_EXISTS');
-      }
-      throw error;
-    }
-  }
-
-  async createBussinessByUser(dto: CreateBusinessByUserDto) {
-    let user;
-
-    try {
-      user = await this.users.create({
-        phone: dto.phone,
-        roleId: 2,
-        password: dto.password,
-        name: dto.name,
-        email: dto.email,
-      });
-    } catch (err) {
-      if (err.code === 'P2002') {
-        throw new BadRequestException('PHONE_EXISTS');
-      }
-    }
-
-    if (!user) {
-      throw new ServiceUnavailableException('UNABLE_TOO_CREATE_USER');
-    }
-
+  async create(dto: CreateBusinessDto, userId: string) {
     try {
       return await this.prisma.business.create({
         data: {
@@ -67,7 +20,7 @@ export class BusinessService {
           description: dto.description,
           address: dto.address as string,
           phone: dto.phone,
-          owner: { connect: { id: user.id } },
+          owner: { connect: { id: userId } },
         },
       });
     } catch (error: any) {
@@ -119,13 +72,23 @@ export class BusinessService {
   }
 
   async update(id: string, dto: UpdateBusinessDto) {
+    // return await this.prisma.business.update({
+    //   where: { id },
+    //   data: {
+    //     title: dto.title,
+    //     description: dto.description,
+    //     address: dto.address,
+    //     owner: dto.ownerId ? { connect: { id: dto.ownerId } } : undefined,
+    //   },
+    // });
+  }
+
+  async updateStatus(id: string, body: UpdateBusinessStatusDto) {
+    const dbStatus = body.status.toUpperCase();
     return await this.prisma.business.update({
       where: { id },
       data: {
-        title: dto.title,
-        description: dto.description,
-        address: dto.address,
-        owner: dto.ownerId ? { connect: { id: dto.ownerId } } : undefined,
+        status: dbStatus,
       },
     });
   }

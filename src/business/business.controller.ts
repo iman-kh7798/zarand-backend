@@ -7,15 +7,14 @@ import {
   Param,
   Delete,
   UseGuards,
-  Query,
   Req,
 } from '@nestjs/common';
 import { BusinessService } from './business.service';
+import { CreateBusinessDto } from './dto/create-business.dto';
 import {
-  CreateBusinessByUserDto,
-  CreateBusinessDto,
-} from './dto/create-business.dto';
-import { UpdateBusinessDto } from './dto/update-business.dto';
+  UpdateBusinessDto,
+  UpdateBusinessStatusDto,
+} from './dto/update-business.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/role/role.guard';
 import { Roles } from 'src/role/role.decorator';
@@ -28,20 +27,19 @@ export class BusinessController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Business)
   @Get('by-owner')
-  findByOwnerId(@Req() req) {
+  findByOwnerId(@Req() req: { user: { sub: string } }) {
     return this.businessService.findByOwnerId(req.user.sub);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Admin)
-  @Post('by-owner')
-  create(@Body() dto: CreateBusinessDto) {
-    return this.businessService.create(dto);
-  }
-
+  @Roles(Role.Business, Role.Admin)
   @Post()
-  createBusinessByUser(@Body() dto: CreateBusinessByUserDto) {
-    return this.businessService.createBussinessByUser(dto);
+  create(
+    @Req() req: { user: { sub: string } },
+    @Body() dto: CreateBusinessDto,
+  ) {
+    const userId = req.user.sub;
+    return this.businessService.create(dto, userId);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
@@ -63,6 +61,13 @@ export class BusinessController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateBusinessDto) {
     return this.businessService.update(id, dto);
+  }
+
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @Patch(':id/status')
+  updateStatus(@Param('id') id: string, @Body() body: UpdateBusinessStatusDto) {
+    return this.businessService.updateStatus(id, body);
   }
 
   @UseGuards(AuthGuard, RolesGuard)

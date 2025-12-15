@@ -5,6 +5,8 @@ import {
   IsNotEmpty,
   IsUUID,
   IsEmail,
+  IsPhoneNumber,
+  Matches,
 } from 'class-validator';
 
 export class CreateBusinessDto {
@@ -20,9 +22,10 @@ export class CreateBusinessDto {
   @IsOptional()
   address?: string;
 
-  @IsUUID()
-  @IsNotEmpty()
-  ownerId: string;
+  @Matches(/^(\+98|0098|0)?9\d{9}$/, {
+    message: 'phone is not valid',
+  })
+  phone: string;
 }
 export class CreateBusinessByUserDto {
   @IsEmail()
