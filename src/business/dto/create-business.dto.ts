@@ -3,10 +3,8 @@ import {
   IsString,
   IsOptional,
   IsNotEmpty,
-  IsUUID,
-  IsEmail,
-  IsPhoneNumber,
   Matches,
+  IsUrl,
 } from 'class-validator';
 
 export class CreateBusinessDto {
@@ -26,32 +24,8 @@ export class CreateBusinessDto {
     message: 'phone is not valid',
   })
   phone: string;
-}
-export class CreateBusinessByUserDto {
-  @IsEmail()
+
+  @IsUrl()
   @IsOptional()
-  email?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  password: string; // از bcrypt هش می‌کنیم بعد ذخیره می‌کنیم
-
-  @IsString()
-  name?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  phone: string;
-
-  @IsString()
-  @IsNotEmpty()
-  title: string;
-
-  @IsString()
-  @IsOptional()
-  description?: string;
-
-  @IsString()
-  @IsOptional()
-  address?: string;
+  image?: string;
 }

@@ -5,12 +5,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { RoleService } from 'src/role/role.service';
 import { UserService } from 'src/users/users.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UserService,
+    private roleService: RoleService,
     private jwtService: JwtService,
   ) {}
 
@@ -19,10 +21,11 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException();
     }
+    const role = await this.roleService.findOne(user.roleId);
     const payload = {
       sub: user.id,
       phone: user.phone,
-      role: user.roleId,
+      role: role.name,
       name: user.name ?? '',
     };
     return { access_token: await this.jwtService.signAsync(payload) };
@@ -49,10 +52,11 @@ export class AuthService {
     if (!user) {
       throw new ServiceUnavailableException('UNABLE_TOO_CREATE_USER');
     }
+    const role = await this.roleService.findOne(user.roleId);
     const payload = {
       sub: user.id,
       phone: user.phone,
-      role: user.roleId,
+      role: role.name,
       name: user.name ?? '',
     };
     return { access_token: await this.jwtService.signAsync(payload) };

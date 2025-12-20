@@ -28,19 +28,19 @@ export class CategoriesController {
   findOne(@Param('id') id: string) {}
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Business)
+  @Roles(Role.Owner)
   @Post()
   create(@Body() createCategory: CreateCategory) {
     this.categoriesService.create(createCategory);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Business)
+  @Roles(Role.Owner)
   @Patch()
   update() {}
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Business)
+  @Roles(Role.Owner)
   @Delete()
   delete() {}
 }

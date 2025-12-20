@@ -16,24 +16,18 @@ import {
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
-import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 import { RolesGuard } from 'src/role/role.guard';
 import { Roles } from 'src/role/role.decorator';
 import { Role } from 'src/role/role.enum';
-import { FileInterceptor } from '@nestjs/platform-express';
 // @UseGuards(RolesGuard)
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Business)
+  @Roles(Role.Owner)
   @Post()
-  @UseInterceptors(FileInterceptor(`product_pic_${Date.now()}`))
-  create(
-    @Body() dto: CreateProductDto,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
+  create(@Body() dto: CreateProductDto) {
     return this.productsService.create(dto);
   }
 
@@ -50,14 +44,14 @@ export class ProductsController {
     return this.productsService.findOne(id);
   }
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Business)
+  @Roles(Role.Owner)
   @Put(':id')
   update(@Param('id') id: string, @Body() dto: Partial<CreateProductDto>) {
     return this.productsService.update(id, dto);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Business)
+  @Roles(Role.Owner)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.productsService.remove(id);

@@ -20,6 +20,7 @@ export class BusinessService {
           description: dto.description,
           address: dto.address as string,
           phone: dto.phone,
+          imageId: dto.image,
           owner: { connect: { id: userId } },
         },
       });
@@ -33,6 +34,16 @@ export class BusinessService {
 
   async findAll() {
     return await this.prisma.business.findMany({
+      include: {
+        owner: true,
+        products: true,
+      },
+    });
+  }
+
+  async findPerBusiness(id: string) {
+    return await this.prisma.business.findMany({
+      where: { ownerId: id },
       include: {
         owner: true,
         products: true,
@@ -56,11 +67,12 @@ export class BusinessService {
     return business;
   }
 
-  async findByOwnerId(ownerId: string) {
-    const business = await this.prisma.business.findMany({
-      where: { ownerId },
+  async findOnePerOwner(id: string, ownerId: string) {
+    const business = await this.prisma.business.findUnique({
+      where: { id, ownerId },
       include: {
         owner: true,
+        products: true,
       },
     });
 
@@ -72,6 +84,18 @@ export class BusinessService {
   }
 
   async update(id: string, dto: UpdateBusinessDto) {
+    // return await this.prisma.business.update({
+    //   where: { id },
+    //   data: {
+    //     title: dto.title,
+    //     description: dto.description,
+    //     address: dto.address,
+    //     owner: dto.ownerId ? { connect: { id: dto.ownerId } } : undefined,
+    //   },
+    // });
+  }
+
+  async updateByOwner(id: string, dto: UpdateBusinessDto, ownerId: string) {
     // return await this.prisma.business.update({
     //   where: { id },
     //   data: {
@@ -96,6 +120,12 @@ export class BusinessService {
   async remove(id: string) {
     return await this.prisma.business.delete({
       where: { id },
+    });
+  }
+
+  async removeByOwner(id: string, ownerId: string) {
+    return await this.prisma.business.delete({
+      where: { id, ownerId },
     });
   }
 }

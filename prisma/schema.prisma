@@ -43,20 +43,22 @@ model User {
 
 /// کسب‌وکار (فروشنده)
 model Business {
-  id          String             @id @default(uuid()) @db.Char(36)
-  title       String
-  description String?
-  address     Json?
-  phone       String?
-  isActive    Boolean            @default(true)
-  ownerId     String             @db.Char(36)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  owner       User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  categories  BusinessCategory[]
-  orders      Order[]
-  products    Product[]
-  status      String             @default("PENDING")
+  id            String             @id @default(uuid()) @db.Char(36)
+  title         String
+  description   String?
+  address       Json?
+  phone         String?
+  isActive      Boolean            @default(true)
+  ownerId       String             @db.Char(36)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  owner         User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  categories    BusinessCategory[]
+  orders        Order[]
+  products      Product[]
+  status        String             @default("PENDING")
+  imageId       String?            @db.Char(36)
+  BusinessImage BusinessImage[]
 }
 
 /// دسته‌بندی سراسری محصولات (درختی)
@@ -124,6 +126,18 @@ model ProductImage {
   productId String   @db.Char(36)
   createdAt DateTime @default(now())
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+/// تصاویر بیزینس
+model BusinessImage {
+  id         String   @id @default(uuid()) @db.Char(36)
+  url        String
+  altText    String?
+  position   Int      @default(0)
+  metadata   Json?
+  businessId String   @db.Char(36)
+  createdAt  DateTime @default(now())
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 }
 
 /// واریانت محصول (رنگ/سایز و ...)

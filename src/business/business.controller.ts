@@ -25,14 +25,7 @@ export class BusinessController {
   constructor(private readonly businessService: BusinessService) {}
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Business)
-  @Get('by-owner')
-  findByOwnerId(@Req() req: { user: { sub: string } }) {
-    return this.businessService.findByOwnerId(req.user.sub);
-  }
-
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Business, Role.Admin)
+  @Roles(Role.Owner, Role.Admin)
   @Post()
   create(
     @Req() req: { user: { sub: string } },
@@ -43,24 +36,43 @@ export class BusinessController {
   }
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Admin)
+  @Roles(Role.Admin, Role.Owner)
   @Get()
-  findAll() {
-    return this.businessService.findAll();
+  findAll(@Req() req: { user: { role: Role; sub: string } }) {
+    const user = req.user;
+    if (user.role === Role.Admin) {
+      return this.businessService.findAll();
+    }
+    return this.businessService.findPerBusiness(user.sub);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Admin)
+  @Roles(Role.Admin, Role.Owner)
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.businessService.findOne(id);
+  findOne(
+    @Req() req: { user: { role: Role; sub: string } },
+    @Param('id') id: string,
+  ) {
+    const user = req.user;
+    if (user.role === Role.Admin) {
+      return this.businessService.findOne(id);
+    }
+    return this.businessService.findOnePerOwner(id, user.sub);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Admin)
+  @Roles(Role.Admin, Role.Owner)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateBusinessDto) {
-    return this.businessService.update(id, dto);
+  update(
+    @Req() req: { user: { role: Role; sub: string } },
+    @Param('id') id: string,
+    @Body() dto: UpdateBusinessDto,
+  ) {
+    const user = req.user;
+    if (user.role === Role.Admin) {
+      return this.businessService.update(id, dto);
+    }
+    return this.businessService.updateByOwner(id, dto, user.sub);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
@@ -71,9 +83,16 @@ export class BusinessController {
   }
 
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Admin)
+  @Roles(Role.Admin, Role.Owner)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.businessService.remove(id);
+  remove(
+    @Req() req: { user: { role: Role; sub: string } },
+    @Param('id') id: string,
+  ) {
+    const user = req.user;
+    if (user.role === Role.Admin) {
+      return this.businessService.remove(id);
+    }
+    return this.businessService.removeByOwner(id, user.sub);
   }
 }
