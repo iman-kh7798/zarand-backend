@@ -7,23 +7,34 @@ import {
   UpdateBusinessDto,
   UpdateBusinessStatusDto,
 } from './dto/update-business.dto';
+import { BusinessImageService } from 'src/business-image/business-image.service';
 
 @Injectable()
 export class BusinessService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private businessImageService: BusinessImageService,
+  ) {}
 
   async create(dto: CreateBusinessDto, userId: string) {
     try {
-      return await this.prisma.business.create({
+      const business = await this.prisma.business.create({
         data: {
           title: dto.title,
           description: dto.description,
           address: dto.address as string,
           phone: dto.phone,
-          imageId: dto.image,
+          // imageId: dto.image,
           owner: { connect: { id: userId } },
         },
       });
+      if (business && dto.image) {
+        const businessImage = await this.businessImageService.create({
+          businessId: business.id,
+          url: dto.image,
+        });
+        await this.updateImage(business.id, businessImage.id);
+      }
     } catch (error: any) {
       if (error.code === 'P2025') {
         throw new NotFoundException('USER_NOT_EXISTS');
@@ -84,15 +95,23 @@ export class BusinessService {
   }
 
   async update(id: string, dto: UpdateBusinessDto) {
-    // return await this.prisma.business.update({
-    //   where: { id },
-    //   data: {
-    //     title: dto.title,
-    //     description: dto.description,
-    //     address: dto.address,
-    //     owner: dto.ownerId ? { connect: { id: dto.ownerId } } : undefined,
-    //   },
-    // });
+    return await this.prisma.business.update({
+      where: { id },
+      data: {
+        title: dto.title,
+        description: dto.description,
+        address: dto.address,
+      },
+    });
+  }
+
+  async updateImage(id: string, imageId: string) {
+    return await this.prisma.business.update({
+      where: { id },
+      data: {
+        imageId,
+      },
+    });
   }
 
   async updateByOwner(id: string, dto: UpdateBusinessDto, ownerId: string) {

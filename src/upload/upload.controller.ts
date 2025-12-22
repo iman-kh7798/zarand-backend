@@ -18,12 +18,12 @@ import { UploadService } from './upload.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from 'src/auth/auth.guard';
 
-@UseGuards(RolesGuard)
+@UseGuards(AuthGuard, RolesGuard)
 @Controller('upload')
 export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
 
-  //   @Roles(Role.Admin, Role.Owner)
+  @Roles(Role.Admin, Role.Owner)
   @Post()
   @UseInterceptors(FileInterceptor('file'))
   createFile(
@@ -36,9 +36,9 @@ export class UploadController {
       }),
     )
     file: Express.Multer.File,
-    @Body() body,
+    // @Body() body: UploadFileDto,
   ) {
-    console.log(body);
+    return this.uploadService.create(file);
   }
 
   @Roles(Role.Admin, Role.Owner)

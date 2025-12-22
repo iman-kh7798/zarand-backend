@@ -25,7 +25,7 @@ export class CreateBusinessDto {
   })
   phone: string;
 
-  @IsUrl()
+  @IsString()
   @IsOptional()
   image?: string;
 }
