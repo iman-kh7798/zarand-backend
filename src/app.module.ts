@@ -10,6 +10,7 @@ import { RoleModule } from './role/role.module';
 import { AuthModule } from './auth/auth.module';
 import { UploadModule } from './upload/upload.module';
 import { BusinessImageModule } from './business-image/business-image.module';
+import { ProductImageModule } from './product-image/product-image.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { BusinessImageModule } from './business-image/business-image.module';
     AuthModule,
     UploadModule,
     BusinessImageModule,
+    ProductImageModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -5,13 +5,17 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
+import { ProductImageService } from 'src/product-image/product-image.service';
 
 @Injectable()
 export class ProductsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private productImageService: ProductImageService,
+  ) {}
 
   async create(dto: CreateProductDto) {
-    return this.prisma.product.create({
+    const product = await this.prisma.product.create({
       data: {
         title: dto.title,
         description: dto.description,
@@ -23,6 +27,21 @@ export class ProductsService {
           : undefined,
       },
     });
+    if (product && dto.images && dto.images.length) {
+      const images: string[] = [];
+      for (let i = 0; i < dto.images.length; i++) {
+        const image = await this.productImageService.create({
+          productId: product.id,
+          url: dto.images[i],
+        });
+        images.push(image.id);
+      }
+      await this.prisma.product.update({
+        where: { id: product.id },
+        // @ts-ignore
+        data: { images },
+      });
+    }
   }
 
   findAllByBusiness(businessId: string) {

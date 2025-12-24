@@ -111,6 +111,7 @@ model Product {
   variants          ProductVariant[]
   reviews           Review[]
   stockReservations StockReservation[]
+  BusinessImage     BusinessImage[]
 
   @@index([businessId])
   @@index([categoryId])
@@ -138,6 +139,8 @@ model BusinessImage {
   businessId String   @db.Char(36)
   createdAt  DateTime @default(now())
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  Product    Product? @relation(fields: [productId], references: [id])
+  productId  String?  @db.Char(36)
 }
 
 /// واریانت محصول (رنگ/سایز و ...)
