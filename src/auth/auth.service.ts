@@ -7,7 +7,6 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { RoleService } from 'src/role/role.service';
 import { UserService } from 'src/users/users.service';
-import { SendCodeDto } from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -62,9 +61,9 @@ export class AuthService {
     };
     return { access_token: await this.jwtService.signAsync(payload) };
   }
-  async sendCode({ phone, code, type }: SendCodeDto) {
-    // حس نمی کنی بهتره این رو بفرستیم به سرویس otp
 
-    await this.usersService.saveVerificationCode(phone, code, type);
+  async sendPhone(phone: string) {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    return this.usersService.saveVerificationCode(phone, code);
   }
 }

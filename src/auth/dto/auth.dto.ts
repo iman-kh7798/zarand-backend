@@ -23,6 +23,13 @@ export class SignUpDto {
   @IsString()
   password: string;
 }
+export class SendPhoneDto {
+  @IsNotEmpty()
+  @Matches(/^(\+98|0098|0)?9\d{9}$/, {
+    message: 'phone is not valid',
+  })
+  phone: string;
+}
 
 export class SendCodeDto {
   @IsNotEmpty()
@@ -34,7 +41,4 @@ export class SendCodeDto {
     message: 'phone is not valid',
   })
   phone: string;
-
-  @IsNotEmpty()
-  type: 'SIGN_UP' | 'FORGOT_PASSWORD';
 }

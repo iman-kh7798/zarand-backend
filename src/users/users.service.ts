@@ -4,12 +4,16 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
+import { SmsService } from 'src/sms/sms.service';
 
 const SALT_ROUNDS = 10;
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private smsService: SmsService,
+  ) {}
 
   // ایجاد یوزر جدید با هش پسورد
   async create(dto: CreateUserDto) {
@@ -63,6 +67,15 @@ export class UserService {
     return safeUser;
   }
 
+  async findByPhone(phone: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { phone },
+    });
+    if (!user) return null;
+
+    const { passwordHash, ...safeUser } = user;
+    return safeUser;
+  }
   // اگر جایی برای لاگین لازم شد:
   async findByEmail(phone: string) {
     return this.prisma.user.findUnique({
@@ -124,11 +137,12 @@ export class UserService {
     return safeUser;
   }
 
-  async saveVerificationCode(
-    phone: string,
-    code: string,
-    type: 'SIGN_UP' | 'FORGOT_PASSWORD',
-  ) {
+  async sendVerificationCode(phone: string, code: string) {
+    // send the code through kavenegar provider
+    this.smsService.sendCode(phone, code);
+  }
+
+  async saveVerificationCode(phone: string, code: string) {
     const existingCode = await this.prisma.otp.findFirst({
       where: {
         phone,
@@ -139,7 +153,7 @@ export class UserService {
     });
 
     if (existingCode) {
-      throw new Error('A_code_already_exists_for_this_phone');
+      return { message: 'A valid code already exists for this phone number' };
     }
     await this.prisma.otp.create({
       data: {
@@ -152,6 +166,6 @@ export class UserService {
 
     // بیا فعلا برای تست کد رو بفرستیم به کاربر همینجا
     console.log(`Verification code for ${phone}: ${code}`);
-    return { message: 'Verification code sent', code };
+    return { message: 'Verification code sent' };
   }
 }
