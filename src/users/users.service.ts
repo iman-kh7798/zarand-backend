@@ -123,4 +123,35 @@ export class UserService {
     const { passwordHash, ...safeUser } = user;
     return safeUser;
   }
+
+  async saveVerificationCode(
+    phone: string,
+    code: string,
+    type: 'SIGN_UP' | 'FORGOT_PASSWORD',
+  ) {
+    const existingCode = await this.prisma.otp.findFirst({
+      where: {
+        phone,
+        expiresAt: {
+          gt: new Date(), // فقط کدهای معتبر (غیر منقضی) رو چک کن
+        },
+      },
+    });
+
+    if (existingCode) {
+      throw new Error('A_code_already_exists_for_this_phone');
+    }
+    await this.prisma.otp.create({
+      data: {
+        phone,
+        code,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000), // کد 5 دقیقه اعتبار داره
+      },
+    });
+    // اینجا فقط ذخیره‌سازی انجام میشه، ارسال کد به کاربر رو باید با سرویس دیگه‌ای انجام بدی
+
+    // بیا فعلا برای تست کد رو بفرستیم به کاربر همینجا
+    console.log(`Verification code for ${phone}: ${code}`);
+    return { message: 'Verification code sent', code };
+  }
 }
