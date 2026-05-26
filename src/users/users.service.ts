@@ -137,11 +137,6 @@ export class UserService {
     return safeUser;
   }
 
-  async sendVerificationCode(phone: string, code: string) {
-    // send the code through kavenegar provider
-    this.smsService.sendCode(phone, code);
-  }
-
   async saveVerificationCode(phone: string, code: string) {
     const existingCode = await this.prisma.otp.findFirst({
       where: {
@@ -165,7 +160,21 @@ export class UserService {
     // اینجا فقط ذخیره‌سازی انجام میشه، ارسال کد به کاربر رو باید با سرویس دیگه‌ای انجام بدی
 
     // بیا فعلا برای تست کد رو بفرستیم به کاربر همینجا
-    console.log(`Verification code for ${phone}: ${code}`);
-    return { message: 'Verification code sent' };
+    this.smsService.sendCode(phone, code);
+    return { message: `Verification code sent code: ${code}` };
+  }
+
+  async findValidOtp(phone: string, code: string) {
+    const otp = await this.prisma.otp.findFirst({
+      where: {
+        phone,
+        code,
+        expiresAt: {
+          gt: new Date(), // فقط کدهای معتبر (غیر منقضی) رو چک کن
+        },
+      },
+    });
+
+    return otp;
   }
 }

@@ -66,4 +66,28 @@ export class AuthService {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     return this.usersService.saveVerificationCode(phone, code);
   }
+
+  async verifyCode(phone: string, code: string) {
+    const otp = await this.usersService.findValidOtp(phone, code);
+    if (!otp) {
+      throw new UnauthorizedException('INVALID_OR_EXPIRED_CODE');
+    }
+    let user = await this.usersService.findByPhone(phone);
+    if (!user) {
+      user = await this.usersService.create({
+        phone,
+        roleId: 2,
+        password: Math.random().toString(36).slice(-8), // رمز تصادفی برای کاربران جدید
+        name: null,
+      });
+    }
+    const role = await this.roleService.findOne(user.roleId);
+    const payload = {
+      sub: user.id,
+      phone: user.phone,
+      role: role.name,
+      name: user.name ?? '',
+    };
+    return { access_token: await this.jwtService.signAsync(payload) };
+  }
 }

@@ -18,7 +18,7 @@ export class CreateUserDto {
   password: string; // از bcrypt هش می‌کنیم بعد ذخیره می‌کنیم
 
   @IsString()
-  name?: string;
+  name?: string | null;
 
   @Matches(/^(\+98|0098|0)?9\d{9}$/, {
     message: 'phone is not valid',

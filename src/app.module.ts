@@ -11,6 +11,7 @@ import { AuthModule } from './auth/auth.module';
 import { UploadModule } from './upload/upload.module';
 import { BusinessImageModule } from './business-image/business-image.module';
 import { ProductImageModule } from './product-image/product-image.module';
+import { SmsModule } from './sms/sms.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ProductImageModule } from './product-image/product-image.module';
     UploadModule,
     BusinessImageModule,
     ProductImageModule,
+    SmsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -10,7 +10,12 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
-import { SendPhoneDto, SignInDto, SignUpDto } from './dto/auth.dto';
+import {
+  SendPhoneDto,
+  SignInDto,
+  SignUpDto,
+  VerifyCodeDto,
+} from './dto/auth.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -36,6 +41,12 @@ export class AuthController {
   @Post('send-phone')
   sendPhone(@Body() sendPhone: SendPhoneDto) {
     return this.authService.sendPhone(sendPhone.phone);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('verify-code')
+  verifyCode(@Body() verifyCode: VerifyCodeDto) {
+    return this.authService.verifyCode(verifyCode.phone, verifyCode.code);
   }
 
   @UseGuards(AuthGuard)
