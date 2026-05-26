@@ -16,10 +16,14 @@ import {
   SignUpDto,
   VerifyCodeDto,
 } from './dto/auth.dto';
+import { UserService } from 'src/users/users.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private userService: UserService,
+  ) {}
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
@@ -51,7 +55,8 @@ export class AuthController {
 
   @UseGuards(AuthGuard)
   @Get('profile')
-  getProfile(@Request() req: { user: object }) {
-    return req.user;
+  async getProfile(@Request() req: { user: { sub: string } }) {
+    const user = await this.userService.findOne(req.user.sub);
+    return user;
   }
 }

@@ -81,6 +81,7 @@ export class AuthService {
         name: null,
       });
     }
+    await this.usersService.expireValidOtp(phone);
     const role = await this.roleService.findOne(user.roleId);
     const payload = {
       sub: user.id,

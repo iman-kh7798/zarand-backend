@@ -177,4 +177,17 @@ export class UserService {
 
     return otp;
   }
+  async expireValidOtp(phone: string) {
+    await this.prisma.otp.updateMany({
+      where: {
+        phone,
+        expiresAt: {
+          gt: new Date(), // فقط کدهای معتبر (غیر منقضی) رو منقضی کن
+        },
+      },
+      data: {
+        expiresAt: new Date(), // با تنظیم زمان انقضای کد به زمان فعلی، اون رو منقضی می‌کنیم
+      },
+    });
+  }
 }
