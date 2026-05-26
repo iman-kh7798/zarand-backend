@@ -1,0 +1,51 @@
+name: Deploy NestJS to cPanel
+
+on:
+  push:
+    branches:
+      - dev # یا هر برنچی که می‌خوای با پوش شدنش دپلوی انجام بشه
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22' # نسخه‌ای که پروژه‌ات باهاش سازگاره
+
+      - name: Install Dependencies & Build
+        run: |
+          npm ci
+          npm run build --if-present
+
+      - name: Deploy files via rsync
+        uses: AppleBoy/scp-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_SECRET_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: 'dist/,package.json,package-lock.json' # پوشه بیلد و فایلهای دیپندنسی
+          target: '/home/${{ secrets.SSH_USER }}/api.maedemohkami.ir' # مسیر پوشه پروژه در سی‌پنل
+          strip_components: 0
+
+      - name: Executing remote SSH commands to restart app
+        uses: AppleBoy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd /home/${{ secrets.SSH_USER }}/api.maedemohkami.ir
+            # اجرای دستور نصب دپندنسی‌ها در سرور (اختیاری اگر پکیج جدید زدی)
+            # /path-to-node-binary/npm install --production
+
+            # دستور طلایی برای ریستارت کردن Node App در سی‌پنل
+            mkdir -p tmp
+            touch tmp/restart.txt
