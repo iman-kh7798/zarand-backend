@@ -2,9 +2,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateProfileDto, UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import { SmsService } from 'src/sms/sms.service';
+import { UpdateProductDto } from 'src/products/dto/update-product.dto';
 
 const SALT_ROUNDS = 10;
 
@@ -162,6 +163,23 @@ export class UserService {
     // بیا فعلا برای تست کد رو بفرستیم به کاربر همینجا
     this.smsService.sendCode(phone, code);
     return { message: `Verification code sent code: ${code}` };
+  }
+
+  async updateProfile(id: string, dto: UpdateProfileDto) {
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: {
+        email: dto.email,
+        name: dto.name,
+        // فقط وقتی پسورد جدید داریم، این فیلد رو ست کن
+      },
+      include: {
+        role: true,
+      },
+    });
+
+    const { passwordHash: _, ...safeUser } = user;
+    return safeUser;
   }
 
   async findValidOtp(phone: string, code: string) {

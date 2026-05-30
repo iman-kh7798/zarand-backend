@@ -4,7 +4,8 @@ import {
   IsOptional,
   IsNotEmpty,
   Matches,
-  IsUrl,
+  IsNumber,
+  IsNumberString,
 } from 'class-validator';
 
 export class CreateBusinessDto {
@@ -20,9 +21,7 @@ export class CreateBusinessDto {
   @IsOptional()
   address?: string;
 
-  @Matches(/^(\+98|0098|0)?9\d{9}$/, {
-    message: 'phone is not valid',
-  })
+  @IsNumberString()
   phone: string;
 
   @IsString()

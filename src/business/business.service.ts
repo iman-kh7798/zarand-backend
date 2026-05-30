@@ -41,6 +41,7 @@ export class BusinessService {
       }
       throw error;
     }
+    return { message: 'Business created successfully' };
   }
 
   async findAll() {
@@ -94,13 +95,14 @@ export class BusinessService {
     return business;
   }
 
-  async update(id: string, dto: UpdateBusinessDto) {
+  async update(id: string, dto: UpdateBusinessDto, ownerId: string) {
     return await this.prisma.business.update({
-      where: { id },
+      where: { id, ownerId },
       data: {
         title: dto.title,
         description: dto.description,
         address: dto.address,
+        phone: dto.phone,
       },
     });
   }
@@ -112,18 +114,6 @@ export class BusinessService {
         imageId,
       },
     });
-  }
-
-  async updateByOwner(id: string, dto: UpdateBusinessDto, ownerId: string) {
-    // return await this.prisma.business.update({
-    //   where: { id },
-    //   data: {
-    //     title: dto.title,
-    //     description: dto.description,
-    //     address: dto.address,
-    //     owner: dto.ownerId ? { connect: { id: dto.ownerId } } : undefined,
-    //   },
-    // });
   }
 
   async updateStatus(id: string, body: UpdateBusinessStatusDto) {
@@ -143,8 +133,16 @@ export class BusinessService {
   }
 
   async removeByOwner(id: string, ownerId: string) {
-    return await this.prisma.business.delete({
-      where: { id, ownerId },
-    });
+    try {
+      await this.prisma.business.delete({
+        where: { id, ownerId },
+      });
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException('BUSINESS_NOT_EXISTS');
+      }
+      throw error;
+    }
+    return { message: 'Business deleted successfully' };
   }
 }

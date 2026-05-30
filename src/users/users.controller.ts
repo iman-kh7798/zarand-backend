@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { UserService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateProfileDto, UpdateUserDto } from './dto/update-user.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/role/role.guard';
 import { Roles } from 'src/role/role.decorator';
@@ -30,6 +30,23 @@ export class UserController {
   @Get()
   findAll() {
     return this.userService.findAll();
+  }
+
+  @Roles(Role.Admin, Role.Owner, Role.User)
+  @Get('profile')
+  async getProfile(@Request() req: { user: { sub: string } }) {
+    const user = await this.userService.findOne(req.user.sub);
+    return user;
+  }
+
+  @Roles(Role.Admin, Role.Owner, Role.User)
+  @Post('profile')
+  async updateProfile(
+    @Request() req: { user: { sub: string } },
+    @Body() dto: UpdateProfileDto,
+  ) {
+    const user = await this.userService.updateProfile(req.user.sub, dto);
+    return user;
   }
 
   @Roles(Role.Admin)

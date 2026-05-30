@@ -52,11 +52,4 @@ export class AuthController {
   verifyCode(@Body() verifyCode: VerifyCodeDto) {
     return this.authService.verifyCode(verifyCode.phone, verifyCode.code);
   }
-
-  @UseGuards(AuthGuard)
-  @Get('profile')
-  async getProfile(@Request() req: { user: { sub: string } }) {
-    const user = await this.userService.findOne(req.user.sub);
-    return user;
-  }
 }

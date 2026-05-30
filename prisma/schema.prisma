@@ -111,7 +111,7 @@ model Product {
   variants          ProductVariant[]
   reviews           Review[]
   stockReservations StockReservation[]
-  BusinessImage     BusinessImage[]
+  businessImages    BusinessImage[]
 
   @@index([businessId])
   @@index([categoryId])
