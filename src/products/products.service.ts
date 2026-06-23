@@ -97,4 +97,17 @@ export class ProductsService {
       where: { id },
     });
   }
+
+  async addImage(productId: string, url: string, altText?: string) {
+    const image = await this.productImageService.create({
+      productId,
+      url,
+      altText,
+    });
+    return image;
+  }
+
+  deleteImage(productId: string, imageId: string) {
+    return this.productImageService.remove(+imageId);
+  }
 }

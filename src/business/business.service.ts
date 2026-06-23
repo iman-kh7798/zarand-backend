@@ -49,6 +49,7 @@ export class BusinessService {
       include: {
         owner: true,
         products: true,
+        BusinessImage: true,
       },
     });
   }
@@ -59,6 +60,7 @@ export class BusinessService {
       include: {
         owner: true,
         products: true,
+        BusinessImage: true,
       },
     });
   }
@@ -69,6 +71,7 @@ export class BusinessService {
       include: {
         owner: true,
         products: true,
+        BusinessImage: true,
       },
     });
 
@@ -85,6 +88,7 @@ export class BusinessService {
       include: {
         owner: true,
         products: true,
+        BusinessImage: true,
       },
     });
 
@@ -144,5 +148,18 @@ export class BusinessService {
       throw error;
     }
     return { message: 'Business deleted successfully' };
+  }
+
+  async addImage(businessId: string, url: string, altText?: string) {
+    const image = await this.businessImageService.create({
+      businessId,
+      url,
+      altText,
+    });
+    return image;
+  }
+
+  deleteImage(businessId: string, imageId: string) {
+    return this.businessImageService.remove(+imageId);
   }
 }

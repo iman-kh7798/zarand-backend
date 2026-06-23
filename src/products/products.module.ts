@@ -4,6 +4,7 @@ import { ProductsController } from './products.controller';
 import { BusinessService } from 'src/business/business.service';
 import { BusinessImageService } from 'src/business-image/business-image.service';
 import { ProductImageService } from 'src/product-image/product-image.service';
+import { UploadService } from 'src/upload/upload.service';
 
 @Module({
   controllers: [ProductsController],
@@ -12,6 +13,7 @@ import { ProductImageService } from 'src/product-image/product-image.service';
     BusinessService,
     BusinessImageService,
     ProductImageService,
+    UploadService,
   ],
 })
 export class ProductsModule {}

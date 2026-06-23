@@ -8,7 +8,13 @@ import {
   Delete,
   UseGuards,
   Req,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { BusinessService } from './business.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import {
@@ -19,11 +25,15 @@ import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/role/role.guard';
 import { Roles } from 'src/role/role.decorator';
 import { Role } from 'src/role/role.enum';
+import { UploadService } from 'src/upload/upload.service';
 
 @UseGuards(AuthGuard, RolesGuard)
 @Controller('business')
 export class BusinessController {
-  constructor(private readonly businessService: BusinessService) {}
+  constructor(
+    private readonly businessService: BusinessService,
+    private readonly uploadService: UploadService,
+  ) {}
 
   @Roles(Role.Owner)
   @Post()
@@ -89,5 +99,34 @@ export class BusinessController {
   @Patch(':id/status')
   updateStatus(@Param('id') id: string, @Body() body: UpdateBusinessStatusDto) {
     return this.businessService.updateStatus(id, body);
+  }
+
+  @Roles(Role.Owner)
+  @Post(':id/upload-image')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImage(
+    @Param('id') id: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5000000 }),
+          new FileTypeValidator({ fileType: /(jpeg|jpg|png)$/ }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+    @Body() body: { altText?: string },
+  ) {
+    const { path } = this.uploadService.create(file);
+    return this.businessService.addImage(id, path, body.altText);
+  }
+
+  @Roles(Role.Owner)
+  @Delete(':businessId/image/:imageId')
+  deleteImage(
+    @Param('businessId') businessId: string,
+    @Param('imageId') imageId: string,
+  ) {
+    return this.businessService.deleteImage(businessId, imageId);
   }
 }
