@@ -1,16 +1,14 @@
-name: Deploy NestJS to cPanel
+name: Deploy to cPanel
 
 on:
   push:
-    branches:
-      - dev
+    branches: [dev]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -18,42 +16,31 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
 
-      # 🟢 گام کلیدی: تولید کلاینت پریزما قبل از بیلد و اجرای Seed
-      - name: Generate Prisma Client
-        run: npx prisma generate
-        # اگر فایل schema.prisma شما در پوشه خاصی است مسیرش رو بده، مثلاً:
-        # run: npx prisma generate --schema=./prisma/schema.prisma
+      - name: Build project
+        run: npm run build
 
-      - name: Run Build
-        run: npm run build --if-present
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy files via SCP/rsync
-        uses: AppleBoy/scp-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_SECRET_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          # حواست باشه پوشه prisma رو هم بفرستی چون برای مایگریشن‌های سرور لازم میشه
-          source: 'dist/,package.json,package-lock.json,prisma/'
-          target: '/home/${{ secrets.SSH_USER }}/api.maedemohkami.ir'
-          strip_components: 0
+      - name: Sync files to server
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }}" \
+            --exclude 'node_modules' \
+            --exclude '.git' \
+            --exclude '.github' \
+            ./dist ./package.json ./package-lock.json \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.APP_PATH }}/
 
-      - name: Executing remote SSH commands to restart app
-        uses: AppleBoy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            cd /home/${{ secrets.SSH_USER }}/api.maedemohkami.ir
-
-            # (اختیاری) اگر نیاز داری روی سرور اصلی هم پریزما جنریت یا مایگریت بشه:
-            # /path-to-node-binary/npx prisma migrate deploy
-
-            mkdir -p tmp
-            touch tmp/restart.txt
+      - name: Install production dependencies & restart app
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "cd ${{ secrets.APP_PATH }} && npm ci --omit=dev && touch tmp/restart.txt"

@@ -16,6 +16,8 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
+  testPhone = ['09212921488', '09376551218'];
+
   async signIn(phone: string, pass: string): Promise<any> {
     const user = await this.usersService.validateUser(phone, pass);
     if (!user) {
@@ -64,14 +66,14 @@ export class AuthService {
 
   async sendPhone(phone: string) {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    if (phone === '09212921488') {
+    if (this.testPhone.includes(phone)) {
       return { code: '123456' };
     }
     return this.usersService.saveVerificationCode(phone, code);
   }
 
   async verifyCode(phone: string, code: string) {
-    const isTestOtp = phone === '09212921488' && code === '123456';
+    const isTestOtp = this.testPhone.includes(phone) && code === '123456';
     const otp = await this.usersService.findValidOtp(phone, code);
     if (!otp && !isTestOtp) {
       throw new UnauthorizedException('INVALID_OR_EXPIRED_CODE');
