@@ -73,6 +73,7 @@ export class AuthService {
   }
 
   async verifyCode(phone: string, code: string) {
+    let isNewUser: boolean = false;
     const isTestOtp = this.testPhone.includes(phone) && code === '123456';
     const otp = await this.usersService.findValidOtp(phone, code);
     if (!otp && !isTestOtp) {
@@ -86,6 +87,7 @@ export class AuthService {
         password: Math.random().toString(36).slice(-8), // رمز تصادفی برای کاربران جدید
         name: null,
       });
+      isNewUser = true;
     }
     await this.usersService.expireValidOtp(phone);
     const role = await this.roleService.findOne(user.roleId);
@@ -95,6 +97,9 @@ export class AuthService {
       role: role.name,
       name: user.name ?? '',
     };
-    return { access_token: await this.jwtService.signAsync(payload) };
+    return {
+      access_token: await this.jwtService.signAsync(payload),
+      isNewUser,
+    };
   }
 }
