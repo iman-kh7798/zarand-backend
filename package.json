@@ -23,6 +23,9 @@
     "deploy": "prisma migrate deploy",
     "generate": "prisma generate"
   },
+  "prisma": {
+    "seed": "ts-node seed.ts"
+  },
   "dependencies": {
     "@nestjs/cli": "^11.0.10",
     "@nestjs/common": "^11.0.1",

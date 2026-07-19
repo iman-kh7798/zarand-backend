@@ -22,9 +22,6 @@ export class ProductsService {
         shortDescription: dto.shortDescription,
         price: dto.price, // Decimal as string
         business: { connect: { id: dto.businessId } },
-        category: dto.categoryId
-          ? { connect: { id: dto.categoryId } }
-          : undefined,
       },
     });
     if (product && dto.images && dto.images.length) {
@@ -48,7 +45,6 @@ export class ProductsService {
     return this.prisma.product.findMany({
       where: { businessId },
       include: {
-        category: true,
         images: true,
         variants: true,
       },
@@ -58,7 +54,6 @@ export class ProductsService {
   findAll() {
     return this.prisma.product.findMany({
       include: {
-        category: true,
         images: true,
         variants: true,
       },
@@ -70,7 +65,6 @@ export class ProductsService {
       where: { id },
       include: {
         business: true,
-        category: true,
         images: true,
         variants: true,
       },

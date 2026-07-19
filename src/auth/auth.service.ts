@@ -16,22 +16,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  testPhone = ['09212921488', '09376551218'];
-
-  async signIn(phone: string, pass: string): Promise<any> {
-    const user = await this.usersService.validateUser(phone, pass);
-    if (!user) {
-      throw new UnauthorizedException();
-    }
-    const role = await this.roleService.findOne(user.roleId);
-    const payload = {
-      sub: user.id,
-      phone: user.phone,
-      role: role.name,
-      name: user.name ?? '',
-    };
-    return { access_token: await this.jwtService.signAsync(payload) };
-  }
+  testPhone = ['09212921488', '09376551218', '09302207762'];
 
   async signUp(name: string, phone: string, pass: string): Promise<any> {
     let user:

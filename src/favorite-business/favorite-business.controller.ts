@@ -14,15 +14,17 @@ import { Role } from 'src/role/role.enum';
 import { RolesGuard } from 'src/role/role.guard';
 import { CreateFavoriteBusinessDto } from './dto/create-favorite-business.dto';
 import { FavoriteBusinessService } from './favorite-business.service';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, RolesGuard)
-@Roles(Role.User, Role.Owner, Role.Admin)
 @Controller('favorite-businesses')
 export class FavoriteBusinessController {
   constructor(
     private readonly favoriteBusinessService: FavoriteBusinessService,
   ) {}
 
+  @Roles(Role.User, Role.Owner, Role.Admin)
   @Post()
   create(
     @Req() req: { user: { sub: string } },
@@ -31,11 +33,12 @@ export class FavoriteBusinessController {
     return this.favoriteBusinessService.create(req.user.sub, dto.businessId);
   }
 
+  @Roles(Role.User, Role.Owner, Role.Admin)
   @Get()
   findAll(@Req() req: { user: { sub: string } }) {
     return this.favoriteBusinessService.findAll(req.user.sub);
   }
-
+  @Roles(Role.User, Role.Owner, Role.Admin)
   @Get(':businessId')
   findOne(
     @Req() req: { user: { sub: string } },
@@ -43,7 +46,7 @@ export class FavoriteBusinessController {
   ) {
     return this.favoriteBusinessService.findOne(req.user.sub, businessId);
   }
-
+  @Roles(Role.User, Role.Owner, Role.Admin)
   @Delete(':businessId')
   remove(
     @Req() req: { user: { sub: string } },

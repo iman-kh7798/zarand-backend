@@ -1,24 +1,43 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateCategoryDto, UpdateCategoryDto, AddBusinessToCategoryDto, RemoveBusinessFromCategoryDto } from './categories.dto';
+import {
+  CreateCategoryDto,
+  AddBusinessToCategoryDto,
+  RemoveBusinessFromCategoryDto,
+  UpdateCategoryDto,
+} from './categories.dto';
 
 @Injectable()
 export class CategoriesService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateCategoryDto) {
-    return await this.prisma.category.create({
-      data: {
-        name: dto.name,
-        slug: dto.slug,
-        description: dto.description,
-        parentId: dto.parentId,
-      },
-      include: {
-        children: true,
-        parent: true,
-      },
-    });
+    try {
+      return await this.prisma.category.create({
+        data: {
+          name: dto.name,
+          slug: dto.slug,
+          description: dto.description,
+          parentId: dto.parentId ? dto.parentId : null,
+        },
+        include: {
+          children: true,
+          parent: true,
+        },
+      });
+    } catch (error: any) {
+      if (error.code === 'P2003') {
+        throw new NotFoundException('PARENTID_DOES_NOT_EXISTS');
+      }
+      if (error.code === 'P2002') {
+        throw new ConflictException('SLUG_ALREADY_IN_USE');
+      }
+    }
   }
 
   async findAll() {
@@ -31,7 +50,6 @@ export class CategoriesService {
             business: true,
           },
         },
-        products: true,
       },
     });
   }
@@ -47,7 +65,6 @@ export class CategoriesService {
             business: true,
           },
         },
-        products: true,
       },
     });
 
@@ -64,21 +81,29 @@ export class CategoriesService {
     if (dto.parentId && dto.parentId === id) {
       throw new BadRequestException('CANNOT_BE_OWN_PARENT');
     }
-
-    return await this.prisma.category.update({
-      where: { id },
-      data: {
-        name: dto.name,
-        slug: dto.slug,
-        description: dto.description,
-        parentId: dto.parentId,
-        isActive: dto.isActive,
-      },
-      include: {
-        children: true,
-        parent: true,
-      },
-    });
+    try {
+      return await this.prisma.category.update({
+        where: { id },
+        data: {
+          name: dto.name,
+          slug: dto.slug,
+          description: dto.description,
+          parentId: dto.parentId,
+          isActive: dto.isActive,
+        },
+        include: {
+          children: true,
+          parent: true,
+        },
+      });
+    } catch (error: any) {
+      if (error.code === 'P2003') {
+        throw new NotFoundException('PARENTID_OR_CATEGORYID_NOT_EXISTS');
+      }
+      if (error.code === 'P2002') {
+        throw new ConflictException('SLUG_ALREADY_IN_USE');
+      }
+    }
   }
 
   async delete(id: string) {
@@ -174,56 +199,56 @@ export class CategoriesService {
     });
   }
 
-  async updateProductCategory(productId: string, categoryId: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { id: productId },
-    });
+  // async updateProductCategory(productId: string, categoryId: string) {
+  //   const product = await this.prisma.product.findUnique({
+  //     where: { id: productId },
+  //   });
 
-    if (!product) {
-      throw new NotFoundException('PRODUCT_NOT_FOUND');
-    }
+  //   if (!product) {
+  //     throw new NotFoundException('PRODUCT_NOT_FOUND');
+  //   }
 
-    await this.findOne(categoryId);
+  //   await this.findOne(categoryId);
 
-    return await this.prisma.product.update({
-      where: { id: productId },
-      data: {
-        categoryId,
-      },
-      include: {
-        category: true,
-        business: true,
-      },
-    });
-  }
+  //   return await this.prisma.product.update({
+  //     where: { id: productId },
+  //     data: {
+  //       categoryId,
+  //     },
+  //     include: {
+  //       category: true,
+  //       business: true,
+  //     },
+  //   });
+  // }
 
-  async removeProductCategory(productId: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { id: productId },
-    });
+  // async removeProductCategory(productId: string) {
+  //   const product = await this.prisma.product.findUnique({
+  //     where: { id: productId },
+  //   });
 
-    if (!product) {
-      throw new NotFoundException('PRODUCT_NOT_FOUND');
-    }
+  //   if (!product) {
+  //     throw new NotFoundException('PRODUCT_NOT_FOUND');
+  //   }
 
-    return await this.prisma.product.update({
-      where: { id: productId },
-      data: {
-        categoryId: null,
-      },
-    });
-  }
+  //   return await this.prisma.product.update({
+  //     where: { id: productId },
+  //     data: {
+  //       categoryId: null,
+  //     },
+  //   });
+  // }
 
-  async getProductsByCategory(categoryId: string) {
-    await this.findOne(categoryId);
+  // async getProductsByCategory(categoryId: string) {
+  //   await this.findOne(categoryId);
 
-    return await this.prisma.product.findMany({
-      where: { categoryId },
-      include: {
-        business: true,
-        images: true,
-        variants: true,
-      },
-    });
-  }
+  //   return await this.prisma.product.findMany({
+  //     where: { categoryId },
+  //     include: {
+  //       business: true,
+  //       images: true,
+  //       variants: true,
+  //     },
+  //   });
+  // }
 }

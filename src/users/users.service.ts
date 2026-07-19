@@ -123,21 +123,6 @@ export class UserService {
     return safeUser;
   }
 
-  // این متد رو برای لاگین بعداً استفاده می‌کنی:
-  async validateUser(phone: string, plainPassword: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { phone },
-    });
-
-    if (!user) return null;
-
-    const isMatch = await bcrypt.compare(plainPassword, user.passwordHash);
-    if (!isMatch) return null;
-
-    const { passwordHash, ...safeUser } = user;
-    return safeUser;
-  }
-
   async saveVerificationCode(phone: string, code: string) {
     const existingCode = await this.prisma.otp.findFirst({
       where: {

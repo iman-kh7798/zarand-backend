@@ -61,6 +61,7 @@ export class BusinessService {
         owner: true,
         products: true,
         BusinessImage: true,
+        categories: true,
       },
     });
   }
@@ -72,6 +73,7 @@ export class BusinessService {
         owner: true,
         products: true,
         BusinessImage: true,
+        categories: true,
       },
     });
 
@@ -89,6 +91,7 @@ export class BusinessService {
         owner: true,
         products: true,
         BusinessImage: true,
+        categories: true,
       },
     });
 

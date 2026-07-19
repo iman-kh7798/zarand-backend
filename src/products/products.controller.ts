@@ -24,6 +24,7 @@ import { RolesGuard } from 'src/role/role.guard';
 import { Roles } from 'src/role/role.decorator';
 import { Role } from 'src/role/role.enum';
 import { UploadService } from 'src/upload/upload.service';
+import { ApiBearerAuth } from '@nestjs/swagger';
 // @UseGuards(RolesGuard)
 @Controller('products')
 export class ProductsController {
@@ -31,7 +32,7 @@ export class ProductsController {
     private readonly productsService: ProductsService,
     private readonly uploadService: UploadService,
   ) {}
-
+  @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Owner)
   @Post()
@@ -51,20 +52,21 @@ export class ProductsController {
   findOne(@Param('id') id: string) {
     return this.productsService.findOne(id);
   }
+  @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Owner)
   @Put(':id')
   update(@Param('id') id: string, @Body() dto: Partial<CreateProductDto>) {
     return this.productsService.update(id, dto);
   }
-
+  @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Owner)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.productsService.remove(id);
   }
-
+  @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Owner)
   @Post(':id/upload-image')
@@ -85,7 +87,7 @@ export class ProductsController {
     const { path } = this.uploadService.create(file);
     return this.productsService.addImage(id, path, body.altText);
   }
-
+  @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Owner)
   @Delete(':productId/image/:imageId')

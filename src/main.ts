@@ -10,9 +10,24 @@ async function bootstrap() {
     .setDescription('Zarand api description')
     .setVersion('1.0')
     .addTag('zarand')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'access-token', // این اسم یه key دلخواهه، بعداً استفاده میشه
+    )
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, documentFactory);
+  SwaggerModule.setup('api', app, documentFactory, {
+    swaggerOptions: {
+      persistAuthorization: true, // بعد از رفرش صفحه توکن نپره (پیشنهادی)
+    },
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

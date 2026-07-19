@@ -17,7 +17,9 @@ import { RolesGuard } from 'src/role/role.guard';
 import { UploadService } from './upload.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, RolesGuard)
 @Controller('upload')
 export class UploadController {
