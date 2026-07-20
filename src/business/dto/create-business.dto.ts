@@ -6,6 +6,7 @@ import {
   Matches,
   IsNumber,
   IsNumberString,
+  IsUUID,
 } from 'class-validator';
 
 export class CreateBusinessDto {
@@ -27,4 +28,8 @@ export class CreateBusinessDto {
   @IsString()
   @IsOptional()
   image?: string;
+
+  @IsUUID()
+  @IsOptional()
+  categoryId?: string;
 }

@@ -8,12 +8,14 @@ import {
   UpdateBusinessStatusDto,
 } from './dto/update-business.dto';
 import { BusinessImageService } from 'src/business-image/business-image.service';
+import { CategoriesService } from 'src/categories/categories.service';
 
 @Injectable()
 export class BusinessService {
   constructor(
     private prisma: PrismaService,
     private businessImageService: BusinessImageService,
+    private categoryService: CategoriesService,
   ) {}
 
   async create(dto: CreateBusinessDto, userId: string) {
@@ -34,6 +36,12 @@ export class BusinessService {
           url: dto.image,
         });
         await this.updateImage(business.id, businessImage.id);
+      }
+      if (dto.categoryId) {
+        await this.categoryService.addBusinessToCategoryWithoutCheck({
+          businessId: business.id,
+          categoryId: dto.categoryId,
+        });
       }
     } catch (error: any) {
       if (error.code === 'P2025') {

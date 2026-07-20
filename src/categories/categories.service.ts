@@ -136,6 +136,20 @@ export class CategoriesService {
       },
     });
   }
+  async addBusinessToCategoryWithoutCheck(dto: AddBusinessToCategoryDto) {
+    await this.findOne(dto.categoryId);
+
+    return await this.prisma.businessCategory.create({
+      data: {
+        businessId: dto.businessId,
+        categoryId: dto.categoryId,
+      },
+      include: {
+        business: true,
+        category: true,
+      },
+    });
+  }
 
   async removeBusinessFromCategory(dto: RemoveBusinessFromCategoryDto) {
     const exists = await this.prisma.businessCategory.findUnique({
