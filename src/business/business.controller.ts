@@ -13,6 +13,8 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  Sse,
+  RequestMethod,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { BusinessService } from './business.service';
@@ -27,7 +29,6 @@ import { Roles } from 'src/role/role.decorator';
 import { Role } from 'src/role/role.enum';
 import { UploadService } from 'src/upload/upload.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
-import { OptionalAuthGuard } from 'src/auth/optional.guard';
 import { NotFoundError } from 'rxjs';
 
 @Controller('business')
@@ -130,7 +131,7 @@ export class BusinessController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 5000000 }),
+          new MaxFileSizeValidator({ maxSize: 5_000_000 }),
           new FileTypeValidator({ fileType: /(jpeg|jpg|png)$/ }),
         ],
       }),
