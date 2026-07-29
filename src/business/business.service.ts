@@ -26,17 +26,16 @@ export class BusinessService {
           description: dto.description,
           address: dto.address as string,
           phone: dto.phone,
-          // imageId: dto.image,
           owner: { connect: { id: userId } },
         },
       });
-      if (business && dto.image) {
-        const businessImage = await this.businessImageService.create({
-          businessId: business.id,
-          url: dto.image,
-        });
-        await this.updateImage(business.id, businessImage.id);
-      }
+      // if (business && dto.image) {
+      //   const businessImage = await this.businessImageService.create({
+      //     businessId: business.id,
+      //     url: dto.image,
+      //   });
+      //   await this.updateImage(business.id, businessImage.id);
+      // }
       if (dto.categoryId) {
         await this.categoryService.addBusinessToCategoryWithoutCheck({
           businessId: business.id,
@@ -50,6 +49,23 @@ export class BusinessService {
       throw error;
     }
     return { message: 'Business created successfully' };
+  }
+
+  async addImages(
+    businessId: string,
+    uploads: { filename: string; path: string }[],
+    altText?: string,
+  ) {
+    const images = await Promise.all(
+      uploads.map((upload) =>
+        this.businessImageService.create({
+          businessId,
+          url: upload.path,
+          altText,
+        }),
+      ),
+    );
+    return images;
   }
 
   async findAll() {

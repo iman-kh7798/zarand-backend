@@ -25,10 +25,6 @@ export class CreateBusinessDto {
   @IsNumberString()
   phone: string;
 
-  @IsString()
-  @IsOptional()
-  image?: string;
-
   @IsUUID()
   @IsOptional()
   categoryId?: string;

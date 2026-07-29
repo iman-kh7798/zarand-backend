@@ -23,4 +23,8 @@ export class UploadService {
       path: `/uploads/${filename}`,
     };
   }
+
+  createMany(files: Express.Multer.File[]) {
+    return files.map((file) => this.create(file));
+  }
 }

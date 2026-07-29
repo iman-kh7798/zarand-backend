@@ -15,8 +15,9 @@ import {
   FileTypeValidator,
   Sse,
   RequestMethod,
+  UploadedFiles,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { BusinessService } from './business.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import {
@@ -121,14 +122,15 @@ export class BusinessController {
   updateStatus(@Param('id') id: string, @Body() body: UpdateBusinessStatusDto) {
     return this.businessService.updateStatus(id, body);
   }
+
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Owner)
-  @Post(':id/upload-image')
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadImage(
+  @Post(':id/upload-images')
+  @UseInterceptors(FilesInterceptor('files', 10)) // 'files' = فیلد فرم، 10 = حداکثر تعداد
+  async uploadImages(
     @Param('id') id: string,
-    @UploadedFile(
+    @UploadedFiles(
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: 5_000_000 }),
@@ -136,12 +138,13 @@ export class BusinessController {
         ],
       }),
     )
-    file: Express.Multer.File,
+    files: Express.Multer.File[],
     @Body() body: { altText?: string },
   ) {
-    const { path } = this.uploadService.create(file);
-    return this.businessService.addImage(id, path, body.altText);
+    const uploadResults = this.uploadService.createMany(files);
+    return this.businessService.addImages(id, uploadResults, body.altText);
   }
+
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Owner)
