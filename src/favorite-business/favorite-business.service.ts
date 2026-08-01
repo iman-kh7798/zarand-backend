@@ -20,7 +20,7 @@ export class FavoriteBusinessService {
           business: {
             include: {
               BusinessImage: true,
-              categories: { include: { category: true } },
+              category: true,
             },
           },
         },
@@ -46,7 +46,7 @@ export class FavoriteBusinessService {
         business: {
           include: {
             BusinessImage: true,
-            categories: { include: { category: true } },
+            category: true,
           },
         },
       },
@@ -60,7 +60,7 @@ export class FavoriteBusinessService {
         business: {
           include: {
             BusinessImage: true,
-            categories: { include: { category: true } },
+            category: true,
           },
         },
       },

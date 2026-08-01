@@ -31,6 +31,7 @@ export class BusinessService {
   ) {
     try {
       const business = await this.prisma.business.create({
+        // @ts-ignore
         data: {
           title: dto.title,
           description: dto.description,
@@ -99,7 +100,7 @@ export class BusinessService {
         owner: true,
         products: true,
         BusinessImage: true,
-        categories: true,
+        category: true,
       },
     });
   }
@@ -111,7 +112,7 @@ export class BusinessService {
         owner: true,
         products: true,
         BusinessImage: true,
-        categories: true,
+        category: true,
       },
     });
 
@@ -129,7 +130,7 @@ export class BusinessService {
         owner: true,
         products: true,
         BusinessImage: true,
-        categories: true,
+        category: true,
       },
     });
 
@@ -282,7 +283,7 @@ export class BusinessService {
             owner: true,
             products: true,
             BusinessImage: true,
-            categories: true,
+            category: true,
           },
         },
       },

@@ -43,25 +43,24 @@ model User {
 
 /// کسب‌وکار (فروشنده)
 model Business {
-  id                 String             @id @default(uuid()) @db.Char(36)
-  title              String
-  description        String?
-  address            Json?
-  phone              String?
-  isActive           Boolean            @default(true)
-  ownerId            String             @db.Char(36)
-  categoryId         String?            @db.Char(36)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  owner              User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  category           Category?          @relation(fields: [categoryId], references: [id])
-  orders             Order[]
-  products           Product[]
-  status             String             @default("PENDING")
-  imageId            String?            @db.Char(36)
-  BusinessImage      BusinessImage[]
-  favoritedBy        FavoriteBusiness[]
-  businessCategories BusinessCategory[]
+  id            String             @id @default(uuid()) @db.Char(36)
+  title         String
+  description   String?
+  address       Json?
+  phone         String?
+  isActive      Boolean            @default(true)
+  ownerId       String             @db.Char(36)
+  categoryId    String?            @db.Char(36)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  owner         User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  category      Category?          @relation(fields: [categoryId], references: [id])
+  orders        Order[]
+  products      Product[]
+  status        String             @default("PENDING")
+  imageId       String?            @db.Char(36)
+  BusinessImage BusinessImage[]
+  favoritedBy   FavoriteBusiness[]
 
   @@index([ownerId])
   @@index([categoryId])
@@ -81,31 +80,20 @@ model FavoriteBusiness {
   @@index([businessId])
 }
 
-model BusinessCategory {
-  businessId String   @db.Char(36)
-  categoryId String   @db.Char(36)
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  @@id([businessId, categoryId])
-  @@index([categoryId])
-}
-
 /// دسته‌بندی سراسری محصولات (درختی)
 model Category {
-  id                 String             @id @default(uuid()) @db.Char(36)
-  name               String
-  slug               String             @unique
-  description        String?
-  isActive           Boolean            @default(true)
-  parentId           String?            @db.Char(36)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  businesses         Business[]
-  parent             Category?          @relation("CategoryToCategory", fields: [parentId], references: [id])
-  children           Category[]         @relation("CategoryToCategory")
-  coverImageUrl      String?
-  businessCategories BusinessCategory[]
+  id            String     @id @default(uuid()) @db.Char(36)
+  name          String
+  slug          String     @unique
+  description   String?
+  isActive      Boolean    @default(true)
+  parentId      String?    @db.Char(36)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  businesses    Business[]
+  parent        Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  children      Category[] @relation("CategoryToCategory")
+  coverImageUrl String?
 }
 
 /// محصول
