@@ -35,7 +35,7 @@ export class BusinessImageController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.businessImageService.findOne(+id);
+    return this.businessImageService.findOne(id);
   }
 
   @ApiBearerAuth('access-token')
@@ -45,12 +45,12 @@ export class BusinessImageController {
     @Param('id') id: string,
     @Body() updateBusinessImageDto: UpdateBusinessImageDto,
   ) {
-    return this.businessImageService.update(+id, updateBusinessImageDto);
+    return this.businessImageService.update(id, updateBusinessImageDto);
   }
   @ApiBearerAuth('access-token')
   @Roles(Role.Owner, Role.Admin)
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.businessImageService.remove(+id);
+    return this.businessImageService.remove(id);
   }
 }

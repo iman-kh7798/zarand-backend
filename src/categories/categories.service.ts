@@ -5,6 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { UploadService } from 'src/upload/upload.service';
 import {
   CreateCategoryDto,
   AddBusinessToCategoryDto,
@@ -14,9 +15,12 @@ import {
 
 @Injectable()
 export class CategoriesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private uploadService: UploadService,
+  ) {}
 
-  async create(dto: CreateCategoryDto) {
+  async create(dto: CreateCategoryDto, coverImageUrl?: string) {
     try {
       return await this.prisma.category.create({
         data: {
@@ -24,6 +28,7 @@ export class CategoriesService {
           slug: dto.slug,
           description: dto.description,
           parentId: dto.parentId ? dto.parentId : null,
+          coverImageUrl,
         },
         include: {
           children: true,
@@ -31,6 +36,7 @@ export class CategoriesService {
         },
       });
     } catch (error: any) {
+      this.uploadService.remove(coverImageUrl);
       if (error.code === 'P2003') {
         throw new NotFoundException('PARENTID_DOES_NOT_EXISTS');
       }
@@ -75,14 +81,15 @@ export class CategoriesService {
     return category;
   }
 
-  async update(id: string, dto: UpdateCategoryDto) {
-    await this.findOne(id);
-
-    if (dto.parentId && dto.parentId === id) {
-      throw new BadRequestException('CANNOT_BE_OWN_PARENT');
-    }
+  async update(id: string, dto: UpdateCategoryDto, coverImageUrl?: string) {
     try {
-      return await this.prisma.category.update({
+      const existing = await this.findOne(id);
+
+      if (dto.parentId && dto.parentId === id) {
+        throw new BadRequestException('CANNOT_BE_OWN_PARENT');
+      }
+
+      const result = await this.prisma.category.update({
         where: { id },
         data: {
           name: dto.name,
@@ -90,13 +97,22 @@ export class CategoriesService {
           description: dto.description,
           parentId: dto.parentId,
           isActive: dto.isActive,
+          ...(coverImageUrl !== undefined ? { coverImageUrl } : {}),
         },
         include: {
           children: true,
           parent: true,
         },
       });
+      if (coverImageUrl !== undefined && existing.coverImageUrl) {
+        this.uploadService.remove(existing.coverImageUrl);
+      }
+      return result;
     } catch (error: any) {
+      this.uploadService.remove(coverImageUrl);
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
       if (error.code === 'P2003') {
         throw new NotFoundException('PARENTID_OR_CATEGORYID_NOT_EXISTS');
       }
@@ -107,11 +123,13 @@ export class CategoriesService {
   }
 
   async delete(id: string) {
-    await this.findOne(id);
+    const category = await this.findOne(id);
 
-    return await this.prisma.category.delete({
+    const result = await this.prisma.category.delete({
       where: { id },
     });
+    this.uploadService.remove(category.coverImageUrl);
+    return result;
   }
 
   async addBusinessToCategory(dto: AddBusinessToCategoryDto) {

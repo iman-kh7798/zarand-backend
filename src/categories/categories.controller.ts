@@ -7,7 +7,13 @@ import {
   Patch,
   Post,
   UseGuards,
+  UploadedFile,
+  UseInterceptors,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CategoriesService } from './categories.service';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/role/role.guard';
@@ -19,10 +25,14 @@ import {
 } from './categories.dto';
 import { CreateCategoryDto, UpdateCategoryDto } from './categories.dto';
 import { ApiBearerAuth } from '@nestjs/swagger';
+import { UploadService } from 'src/upload/upload.service';
 
 @Controller('categories')
 export class CategoriesController {
-  constructor(private categoriesService: CategoriesService) {}
+  constructor(
+    private categoriesService: CategoriesService,
+    private uploadService: UploadService,
+  ) {}
 
   @Get()
   findAll() {
@@ -47,18 +57,36 @@ export class CategoriesController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Admin)
   @Post()
-  create(@Body() createCategoryDto: CreateCategoryDto) {
-    return this.categoriesService.create(createCategoryDto);
+  @UseInterceptors(FileInterceptor('coverImage'))
+  create(
+    @Body() createCategoryDto: CreateCategoryDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5_000_000 }),
+          new FileTypeValidator({ fileType: /(jpeg|jpg|png)$/ }),
+        ],
+      }),
+    )
+    coverImage: Express.Multer.File,
+  ) {
+    const upload = this.uploadService.create(coverImage);
+    return this.categoriesService.create(createCategoryDto, upload.path);
   }
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Admin)
   @Patch(':id')
+  @UseInterceptors(FileInterceptor('coverImage'))
   update(
     @Param('id') id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
+    @UploadedFile() coverImage?: Express.Multer.File,
   ) {
-    return this.categoriesService.update(id, updateCategoryDto);
+    const upload = coverImage
+      ? this.uploadService.create(coverImage)
+      : undefined;
+    return this.categoriesService.update(id, updateCategoryDto, upload?.path);
   }
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)

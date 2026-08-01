@@ -1,0 +1,2 @@
+ALTER TABLE `Category`
+ADD COLUMN `coverImageUrl` VARCHAR(191) NULL;

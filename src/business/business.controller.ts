@@ -16,6 +16,7 @@ import {
   Sse,
   RequestMethod,
   UploadedFiles,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { BusinessService } from './business.service';
@@ -43,12 +44,18 @@ export class BusinessController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Owner)
   @Post()
+  @UseInterceptors(FilesInterceptor('files', 10))
   create(
     @Req() req: { user: { sub: string } },
     @Body() dto: CreateBusinessDto,
+    @UploadedFiles() files: Express.Multer.File[],
   ) {
     const userId = req.user.sub;
-    return this.businessService.create(dto, userId);
+    if (files.length > 10) {
+      throw new BadRequestException('BUSINESS_IMAGE_LIMIT_EXCEEDED');
+    }
+    const uploads = files?.length ? this.uploadService.createMany(files) : [];
+    return this.businessService.create(dto, userId, uploads);
   }
   @Get()
   findAll(@Req() req: { user?: { role: Role; sub: string } }) {
@@ -154,5 +161,33 @@ export class BusinessController {
     @Param('imageId') imageId: string,
   ) {
     return this.businessService.deleteImage(businessId, imageId);
+  }
+
+  @ApiBearerAuth('access-token')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.Owner)
+  @Patch(':businessId/image/:imageId')
+  @UseInterceptors(FileInterceptor('file'))
+  replaceImage(
+    @Param('businessId') businessId: string,
+    @Param('imageId') imageId: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5_000_000 }),
+          new FileTypeValidator({ fileType: /(jpeg|jpg|png)$/ }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+    @Body() body: { altText?: string },
+  ) {
+    const upload = this.uploadService.create(file);
+    return this.businessService.replaceImage(
+      businessId,
+      imageId,
+      upload,
+      body.altText,
+    );
   }
 }

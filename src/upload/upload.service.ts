@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
 @Injectable()
@@ -26,5 +26,19 @@ export class UploadService {
 
   createMany(files: Express.Multer.File[]) {
     return files.map((file) => this.create(file));
+  }
+
+  remove(filePath?: string | null) {
+    if (!filePath) return;
+
+    const filename = filePath.split('/').pop();
+    if (!filename || filename.includes('..')) return;
+
+    const absolutePath = join(process.cwd(), 'uploads', filename);
+    if (existsSync(absolutePath)) unlinkSync(absolutePath);
+  }
+
+  removeMany(filePaths: (string | null | undefined)[]) {
+    filePaths.forEach((filePath) => this.remove(filePath));
   }
 }

@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import {
@@ -9,6 +13,7 @@ import {
 } from './dto/update-business.dto';
 import { BusinessImageService } from 'src/business-image/business-image.service';
 import { CategoriesService } from 'src/categories/categories.service';
+import { UploadService } from 'src/upload/upload.service';
 
 @Injectable()
 export class BusinessService {
@@ -16,9 +21,14 @@ export class BusinessService {
     private prisma: PrismaService,
     private businessImageService: BusinessImageService,
     private categoryService: CategoriesService,
+    private uploadService: UploadService,
   ) {}
 
-  async create(dto: CreateBusinessDto, userId: string) {
+  async create(
+    dto: CreateBusinessDto,
+    userId: string,
+    uploads: { filename: string; path: string }[] = [],
+  ) {
     try {
       const business = await this.prisma.business.create({
         data: {
@@ -29,6 +39,7 @@ export class BusinessService {
           owner: { connect: { id: userId } },
         },
       });
+      if (uploads.length) await this.addImages(business.id, uploads);
       // if (business && dto.image) {
       //   const businessImage = await this.businessImageService.create({
       //     businessId: business.id,
@@ -43,6 +54,7 @@ export class BusinessService {
         });
       }
     } catch (error: any) {
+      this.uploadService.removeMany(uploads.map((upload) => upload.path));
       if (error.code === 'P2025') {
         throw new NotFoundException('USER_NOT_EXISTS');
       }
@@ -56,6 +68,13 @@ export class BusinessService {
     uploads: { filename: string; path: string }[],
     altText?: string,
   ) {
+    const existingCount = await this.prisma.businessImage.count({
+      where: { businessId },
+    });
+    if (existingCount + uploads.length > 10) {
+      this.uploadService.removeMany(uploads.map((upload) => upload.path));
+      throw new BadRequestException('BUSINESS_IMAGE_LIMIT_EXCEEDED');
+    }
     const images = await Promise.all(
       uploads.map((upload) =>
         this.businessImageService.create({
@@ -158,16 +177,33 @@ export class BusinessService {
   }
 
   async remove(id: string) {
-    return await this.prisma.business.delete({
+    const business = await this.prisma.business.findUnique({
+      where: { id },
+      include: { BusinessImage: true },
+    });
+    if (!business) throw new NotFoundException('BUSINESS_NOT_FOUND');
+    const result = await this.prisma.business.delete({
       where: { id },
     });
+    this.uploadService.removeMany(
+      business.BusinessImage.map((image) => image.url),
+    );
+    return result;
   }
 
   async removeByOwner(id: string, ownerId: string) {
     try {
+      const business = await this.prisma.business.findUnique({
+        where: { id, ownerId },
+        include: { BusinessImage: true },
+      });
+      if (!business) throw new NotFoundException('BUSINESS_NOT_EXISTS');
       await this.prisma.business.delete({
         where: { id, ownerId },
       });
+      this.uploadService.removeMany(
+        business.BusinessImage.map((image) => image.url),
+      );
     } catch (error: any) {
       if (error.code === 'P2025') {
         throw new NotFoundException('BUSINESS_NOT_EXISTS');
@@ -187,6 +223,33 @@ export class BusinessService {
   }
 
   deleteImage(businessId: string, imageId: string) {
-    return this.businessImageService.remove(+imageId);
+    return this.businessImageService.remove(imageId, businessId);
+  }
+
+  async replaceImage(
+    businessId: string,
+    imageId: string,
+    upload: { filename: string; path: string },
+    altText?: string,
+  ) {
+    const image = await this.prisma.businessImage.findFirst({
+      where: { id: imageId, businessId },
+    });
+
+    if (!image) {
+      this.uploadService.remove(upload.path);
+      throw new NotFoundException('BUSINESS_IMAGE_NOT_FOUND');
+    }
+
+    const replacement = await this.prisma.businessImage.update({
+      where: { id: imageId },
+      data: {
+        url: upload.path,
+        ...(altText !== undefined ? { altText } : {}),
+      },
+    });
+
+    this.uploadService.remove(image.url);
+    return replacement;
   }
 }
