@@ -1,39 +1,10 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Post,
-  Request,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { AuthGuard } from './auth.guard';
-import {
-  SendPhoneDto,
-  SignInDto,
-  SignUpDto,
-  VerifyCodeDto,
-} from './dto/auth.dto';
-import { UserService } from 'src/users/users.service';
+import { SendPhoneDto, VerifyCodeDto } from './dto/auth.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private authService: AuthService,
-    private userService: UserService,
-  ) {}
-
-  @HttpCode(HttpStatus.OK)
-  @Post('sign-up')
-  signUp(@Body() signUpDto: SignUpDto) {
-    return this.authService.signUp(
-      signUpDto.name,
-      signUpDto.phone,
-      signUpDto.password,
-    );
-  }
+  constructor(private authService: AuthService) {}
 
   @HttpCode(HttpStatus.OK)
   @Post('send-phone')

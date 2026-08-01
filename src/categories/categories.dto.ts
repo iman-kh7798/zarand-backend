@@ -6,6 +6,7 @@ import {
   MinLength,
   MaxLength,
   Matches,
+  IsNotEmpty,
 } from 'class-validator';
 
 export class CreateCategoryDto {
@@ -72,5 +73,15 @@ export class RemoveBusinessFromCategoryDto {
 
 export class UpdateProductCategoryDto {
   @IsUUID()
+  categoryId: string;
+}
+
+export class SetBusinessCategoryDto {
+  @IsString()
+  @IsNotEmpty()
+  businessId: string;
+
+  @IsString()
+  @IsNotEmpty()
   categoryId: string;
 }

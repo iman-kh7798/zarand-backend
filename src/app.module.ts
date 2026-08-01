@@ -12,7 +12,7 @@ import { UploadModule } from './upload/upload.module';
 import { BusinessImageModule } from './business-image/business-image.module';
 import { ProductImageModule } from './product-image/product-image.module';
 import { SmsModule } from './sms/sms.module';
-import { FavoriteBusinessModule } from './favorite-business/favorite-business.module';
+// import { FavoriteBusinessModule } from './favorite-business/favorite-business.module';
 
 @Module({
   imports: [
@@ -27,7 +27,7 @@ import { FavoriteBusinessModule } from './favorite-business/favorite-business.mo
     BusinessImageModule,
     ProductImageModule,
     SmsModule,
-    FavoriteBusinessModule,
+    // FavoriteBusinessModule,
   ],
   controllers: [AppController],
   providers: [AppService],

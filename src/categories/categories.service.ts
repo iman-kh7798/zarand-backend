@@ -8,8 +8,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { UploadService } from 'src/upload/upload.service';
 import {
   CreateCategoryDto,
-  AddBusinessToCategoryDto,
-  RemoveBusinessFromCategoryDto,
+  SetBusinessCategoryDto,
   UpdateCategoryDto,
 } from './categories.dto';
 
@@ -43,6 +42,7 @@ export class CategoriesService {
       if (error.code === 'P2002') {
         throw new ConflictException('SLUG_ALREADY_IN_USE');
       }
+      throw error;
     }
   }
 
@@ -51,11 +51,7 @@ export class CategoriesService {
       include: {
         children: true,
         parent: true,
-        businessCategories: {
-          include: {
-            business: true,
-          },
-        },
+        businesses: true,
       },
     });
   }
@@ -66,11 +62,7 @@ export class CategoriesService {
       include: {
         children: true,
         parent: true,
-        businessCategories: {
-          include: {
-            business: true,
-          },
-        },
+        businesses: true,
       },
     });
 
@@ -110,7 +102,10 @@ export class CategoriesService {
       return result;
     } catch (error: any) {
       this.uploadService.remove(coverImageUrl);
-      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
       if (error.code === 'P2003') {
@@ -119,6 +114,7 @@ export class CategoriesService {
       if (error.code === 'P2002') {
         throw new ConflictException('SLUG_ALREADY_IN_USE');
       }
+      throw error;
     }
   }
 
@@ -132,94 +128,66 @@ export class CategoriesService {
     return result;
   }
 
-  async addBusinessToCategory(dto: AddBusinessToCategoryDto) {
+  /** Assign (or change) the category of a business */
+  async setBusinessCategory(dto: SetBusinessCategoryDto) {
     await this.findOne(dto.categoryId);
 
     const business = await this.prisma.business.findUnique({
       where: { id: dto.businessId },
     });
-
     if (!business) {
       throw new NotFoundException('BUSINESS_NOT_FOUND');
     }
 
-    return await this.prisma.businessCategory.create({
-      data: {
-        businessId: dto.businessId,
-        categoryId: dto.categoryId,
-      },
-      include: {
-        business: true,
-        category: true,
-      },
-    });
-  }
-  async addBusinessToCategoryWithoutCheck(dto: AddBusinessToCategoryDto) {
-    await this.findOne(dto.categoryId);
-
-    return await this.prisma.businessCategory.create({
-      data: {
-        businessId: dto.businessId,
-        categoryId: dto.categoryId,
-      },
-      include: {
-        business: true,
-        category: true,
-      },
+    return await this.prisma.business.update({
+      where: { id: dto.businessId },
+      data: { categoryId: dto.categoryId },
+      include: { category: true },
     });
   }
 
-  async removeBusinessFromCategory(dto: RemoveBusinessFromCategoryDto) {
-    const exists = await this.prisma.businessCategory.findUnique({
-      where: {
-        businessId_categoryId: {
-          businessId: dto.businessId,
-          categoryId: dto.categoryId,
-        },
-      },
+  /** Same as setBusinessCategory but without checking category existence (used internally, e.g. on business creation) */
+  async setBusinessCategoryWithoutCheck(
+    businessId: string,
+    categoryId: string,
+  ) {
+    return await this.prisma.business.update({
+      where: { id: businessId },
+      data: { categoryId },
+      include: { category: true },
     });
+  }
 
-    if (!exists) {
-      throw new NotFoundException('BUSINESS_CATEGORY_NOT_FOUND');
+  /** Remove the category from a business (set to null) */
+  async removeBusinessCategory(businessId: string) {
+    const business = await this.prisma.business.findUnique({
+      where: { id: businessId },
+    });
+    if (!business) {
+      throw new NotFoundException('BUSINESS_NOT_FOUND');
     }
 
-    return await this.prisma.businessCategory.delete({
-      where: {
-        businessId_categoryId: {
-          businessId: dto.businessId,
-          categoryId: dto.categoryId,
-        },
-      },
+    return await this.prisma.business.update({
+      where: { id: businessId },
+      data: { categoryId: null },
     });
   }
 
   async getBusinessesByCategory(categoryId: string) {
     await this.findOne(categoryId);
 
-    return await this.prisma.businessCategory.findMany({
+    return await this.prisma.business.findMany({
       where: { categoryId },
       include: {
-        business: {
-          include: {
-            products: true,
-            BusinessImage: true,
-          },
-        },
+        products: true,
+        BusinessImage: true,
       },
     });
   }
 
-  async getCategoriesByBusiness(businessId: string) {
+  async getCategoryByBusiness(businessId: string) {
     const business = await this.prisma.business.findUnique({
       where: { id: businessId },
-    });
-
-    if (!business) {
-      throw new NotFoundException('BUSINESS_NOT_FOUND');
-    }
-
-    return await this.prisma.businessCategory.findMany({
-      where: { businessId },
       include: {
         category: {
           include: {
@@ -229,58 +197,11 @@ export class CategoriesService {
         },
       },
     });
+
+    if (!business) {
+      throw new NotFoundException('BUSINESS_NOT_FOUND');
+    }
+
+    return business.category;
   }
-
-  // async updateProductCategory(productId: string, categoryId: string) {
-  //   const product = await this.prisma.product.findUnique({
-  //     where: { id: productId },
-  //   });
-
-  //   if (!product) {
-  //     throw new NotFoundException('PRODUCT_NOT_FOUND');
-  //   }
-
-  //   await this.findOne(categoryId);
-
-  //   return await this.prisma.product.update({
-  //     where: { id: productId },
-  //     data: {
-  //       categoryId,
-  //     },
-  //     include: {
-  //       category: true,
-  //       business: true,
-  //     },
-  //   });
-  // }
-
-  // async removeProductCategory(productId: string) {
-  //   const product = await this.prisma.product.findUnique({
-  //     where: { id: productId },
-  //   });
-
-  //   if (!product) {
-  //     throw new NotFoundException('PRODUCT_NOT_FOUND');
-  //   }
-
-  //   return await this.prisma.product.update({
-  //     where: { id: productId },
-  //     data: {
-  //       categoryId: null,
-  //     },
-  //   });
-  // }
-
-  // async getProductsByCategory(categoryId: string) {
-  //   await this.findOne(categoryId);
-
-  //   return await this.prisma.product.findMany({
-  //     where: { categoryId },
-  //     include: {
-  //       business: true,
-  //       images: true,
-  //       variants: true,
-  //     },
-  //   });
-  // }
 }

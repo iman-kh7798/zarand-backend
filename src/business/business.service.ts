@@ -37,6 +37,7 @@ export class BusinessService {
           address: dto.address as string,
           phone: dto.phone,
           owner: { connect: { id: userId } },
+          ...(dto.categoryId ? { categoryId: dto.categoryId } : {}),
         },
       });
       if (uploads.length) await this.addImages(business.id, uploads);
@@ -47,12 +48,6 @@ export class BusinessService {
       //   });
       //   await this.updateImage(business.id, businessImage.id);
       // }
-      if (dto.categoryId) {
-        await this.categoryService.addBusinessToCategoryWithoutCheck({
-          businessId: business.id,
-          categoryId: dto.categoryId,
-        });
-      }
     } catch (error: any) {
       this.uploadService.removeMany(uploads.map((upload) => upload.path));
       if (error.code === 'P2025') {

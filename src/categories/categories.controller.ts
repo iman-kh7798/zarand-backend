@@ -20,10 +20,10 @@ import { RolesGuard } from 'src/role/role.guard';
 import { Roles } from 'src/role/role.decorator';
 import { Role } from 'src/role/role.enum';
 import {
-  AddBusinessToCategoryDto,
-  RemoveBusinessFromCategoryDto,
+  SetBusinessCategoryDto,
+  CreateCategoryDto,
+  UpdateCategoryDto,
 } from './categories.dto';
-import { CreateCategoryDto, UpdateCategoryDto } from './categories.dto';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { UploadService } from 'src/upload/upload.service';
 
@@ -49,10 +49,6 @@ export class CategoriesController {
     return this.categoriesService.getBusinessesByCategory(id);
   }
 
-  // @Get(':id/products')
-  // getProductsByCategory(@Param('id') id: string) {
-  //   return this.categoriesService.getProductsByCategory(id);
-  // }
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Admin)
@@ -73,6 +69,7 @@ export class CategoriesController {
     const upload = this.uploadService.create(coverImage);
     return this.categoriesService.create(createCategoryDto, upload.path);
   }
+
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Admin)
@@ -88,6 +85,7 @@ export class CategoriesController {
       : undefined;
     return this.categoriesService.update(id, updateCategoryDto, upload?.path);
   }
+
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Admin)
@@ -99,41 +97,21 @@ export class CategoriesController {
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Admin, Role.Owner)
-  @Post('business/add')
-  addBusinessToCategory(@Body() dto: AddBusinessToCategoryDto) {
-    return this.categoriesService.addBusinessToCategory(dto);
+  @Post('business/set')
+  setBusinessCategory(@Body() dto: SetBusinessCategoryDto) {
+    return this.categoriesService.setBusinessCategory(dto);
   }
+
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Admin, Role.Owner)
-  @Post('business/remove')
-  removeBusinessFromCategory(@Body() dto: RemoveBusinessFromCategoryDto) {
-    return this.categoriesService.removeBusinessFromCategory(dto);
+  @Delete('business/:businessId')
+  removeBusinessCategory(@Param('businessId') businessId: string) {
+    return this.categoriesService.removeBusinessCategory(businessId);
   }
 
   @Get('business/:businessId')
-  getCategoriesByBusiness(@Param('businessId') businessId: string) {
-    return this.categoriesService.getCategoriesByBusiness(businessId);
+  getCategoryByBusiness(@Param('businessId') businessId: string) {
+    return this.categoriesService.getCategoryByBusiness(businessId);
   }
-
-  // Product-Category Management
-  // @UseGuards(AuthGuard, RolesGuard)
-  // @Roles(Role.Owner)
-  // @Patch('product/:productId')
-  // updateProductCategory(
-  //   @Param('productId') productId: string,
-  //   @Body() dto: UpdateProductCategoryDto,
-  // ) {
-  //   return this.categoriesService.updateProductCategory(
-  //     productId,
-  //     dto.categoryId,
-  //   );
-  // }
-
-  // @UseGuards(AuthGuard, RolesGuard)
-  // @Roles(Role.Owner)
-  // @Delete('product/:productId')
-  // removeProductCategory(@Param('productId') productId: string) {
-  //   return this.categoriesService.removeProductCategory(productId);
-  // }
 }

@@ -51,7 +51,7 @@ export class BusinessController {
     @UploadedFiles() files: Express.Multer.File[],
   ) {
     const userId = req.user.sub;
-    if (files.length > 10) {
+    if (files?.length > 10) {
       throw new BadRequestException('BUSINESS_IMAGE_LIMIT_EXCEEDED');
     }
     const uploads = files?.length ? this.uploadService.createMany(files) : [];

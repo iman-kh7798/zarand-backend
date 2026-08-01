@@ -25,29 +25,29 @@ import { ApiBearerAuth } from '@nestjs/swagger';
 export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
 
-  @Roles(Role.Admin, Role.Owner)
-  @Post()
-  @UseInterceptors(FileInterceptor('file'))
-  createFile(
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 5_000_000 }),
-          new FileTypeValidator({ fileType: /(jpeg|jpg|png)$/ }),
-        ],
-      }),
-    )
-    file: Express.Multer.File,
-    // @Body() body: UploadFileDto,
-  ) {
-    return this.uploadService.create(file);
-  }
+  // @Roles(Role.Admin, Role.Owner)
+  // @Post()
+  // @UseInterceptors(FileInterceptor('file'))
+  // createFile(
+  //   @UploadedFile(
+  //     new ParseFilePipe({
+  //       validators: [
+  //         new MaxFileSizeValidator({ maxSize: 5_000_000 }),
+  //         new FileTypeValidator({ fileType: /(jpeg|jpg|png)$/ }),
+  //       ],
+  //     }),
+  //   )
+  //   file: Express.Multer.File,
+  //   // @Body() body: UploadFileDto,
+  // ) {
+  //   return this.uploadService.create(file);
+  // }
 
-  @Roles(Role.Admin, Role.Owner)
-  @Patch()
-  updateFile() {}
+  // @Roles(Role.Admin, Role.Owner)
+  // @Patch()
+  // updateFile() {}
 
-  @Roles(Role.Admin, Role.Owner)
-  @Delete()
-  deleteFile() {}
+  // @Roles(Role.Admin, Role.Owner)
+  // @Delete()
+  // deleteFile() {}
 }
