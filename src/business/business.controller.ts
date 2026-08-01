@@ -190,4 +190,31 @@ export class BusinessController {
       body.altText,
     );
   }
+
+  @ApiBearerAuth('access-token')
+  @UseGuards(AuthGuard)
+  @Roles(Role.Owner, Role.User)
+  @Get('favorites/me')
+  getFavorites(@Req() req: { user: { sub: string } }) {
+    return this.businessService.getFavorites(req.user.sub);
+  }
+
+  @ApiBearerAuth('access-token')
+  @UseGuards(AuthGuard)
+  @Roles(Role.Owner, Role.User)
+  @Post(':id/favorite')
+  addFavorite(@Req() req: { user: { sub: string } }, @Param('id') id: string) {
+    return this.businessService.addFavorite(id, req.user.sub);
+  }
+
+  @ApiBearerAuth('access-token')
+  @UseGuards(AuthGuard)
+  @Roles(Role.Owner, Role.User)
+  @Delete(':id/favorite')
+  removeFavorite(
+    @Req() req: { user: { sub: string } },
+    @Param('id') id: string,
+  ) {
+    return this.businessService.removeFavorite(id, req.user.sub);
+  }
 }

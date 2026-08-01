@@ -252,4 +252,48 @@ export class BusinessService {
     this.uploadService.remove(image.url);
     return replacement;
   }
+
+  async addFavorite(businessId: string, userId: string) {
+    const business = await this.prisma.business.findUnique({
+      where: { id: businessId },
+    });
+    if (!business) throw new NotFoundException('BUSINESS_NOT_FOUND');
+
+    try {
+      await this.prisma.favoriteBusiness.create({
+        data: { userId, businessId },
+      });
+    } catch (error: any) {
+      // P2002 = unique constraint violation (already favorited) -> idempotent, ignore
+      if (error.code !== 'P2002') throw error;
+    }
+
+    return { message: 'BUSINESS_ADDED_TO_FAVORITES' };
+  }
+
+  async removeFavorite(businessId: string, userId: string) {
+    await this.prisma.favoriteBusiness.deleteMany({
+      where: { userId, businessId },
+    });
+    return { message: 'BUSINESS_REMOVED_FROM_FAVORITES' };
+  }
+
+  async getFavorites(userId: string) {
+    const favorites = await this.prisma.favoriteBusiness.findMany({
+      where: { userId },
+      include: {
+        business: {
+          include: {
+            owner: true,
+            products: true,
+            BusinessImage: true,
+            categories: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return favorites.map((f) => f.business);
+  }
 }
