@@ -153,6 +153,18 @@ export class BusinessService {
     });
   }
 
+  async adminUpdate(id: string, dto: UpdateBusinessDto) {
+    return await this.prisma.business.update({
+      where: { id },
+      data: {
+        title: dto.title,
+        description: dto.description,
+        address: dto.address,
+        phone: dto.phone,
+      },
+    });
+  }
+
   async updateImage(id: string, imageId: string) {
     return await this.prisma.business.update({
       where: { id },

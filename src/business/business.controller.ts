@@ -95,7 +95,7 @@ export class BusinessController {
   }
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Owner)
+  @Roles(Role.Admin, Role.Owner)
   @Patch(':id')
   update(
     @Req() req: { user: { role: Role; sub: string } },
@@ -103,23 +103,23 @@ export class BusinessController {
     @Body() dto: UpdateBusinessDto,
   ) {
     const user = req.user;
-    // if (user.role === Role.Admin) {
-    //   return this.businessService.update(id, dto);
-    // }
+    if (user.role === Role.Admin) {
+      return this.businessService.adminUpdate(id, dto);
+    }
     return this.businessService.update(id, dto, user.sub);
   }
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Owner)
+  @Roles(Role.Admin, Role.Owner)
   @Delete(':id')
   remove(
     @Req() req: { user: { role: Role; sub: string } },
     @Param('id') id: string,
   ) {
     const user = req.user;
-    // if (user.role === Role.Admin) {
-    //   return this.businessService.remove(id);
-    // }
+    if (user.role === Role.Admin) {
+      return this.businessService.remove(id);
+    }
     return this.businessService.removeByOwner(id, user.sub);
   }
   @ApiBearerAuth('access-token')
