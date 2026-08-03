@@ -38,7 +38,9 @@ export class BusinessService {
           address: dto.address as string,
           phone: dto.phone,
           owner: { connect: { id: userId } },
-          ...(dto.categoryId ? { categoryId: dto.categoryId } : {}),
+          ...(dto.categoryId
+            ? { category: { connect: { id: dto.categoryId } } }
+            : {}),
         },
       });
       if (uploads.length) await this.addImages(business.id, uploads);
