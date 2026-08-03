@@ -89,8 +89,8 @@ export class BusinessService {
     return await this.prisma.business.findMany({
       include: {
         owner: true,
-        products: true,
         BusinessImage: true,
+        category: true
       },
     });
   }
@@ -100,7 +100,6 @@ export class BusinessService {
       where: { ownerId: id },
       include: {
         owner: true,
-        products: true,
         BusinessImage: true,
         category: true,
       },

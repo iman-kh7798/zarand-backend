@@ -12,10 +12,14 @@ import { UploadModule } from './upload/upload.module';
 import { BusinessImageModule } from './business-image/business-image.module';
 import { ProductImageModule } from './product-image/product-image.module';
 import { SmsModule } from './sms/sms.module';
-// import { FavoriteBusinessModule } from './favorite-business/favorite-business.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'uploads'),
+    }),
     BusinessModule,
     CategoriesModule,
     PrismaModule,
