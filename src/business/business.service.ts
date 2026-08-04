@@ -31,7 +31,6 @@ export class BusinessService {
   ) {
     try {
       const business = await this.prisma.business.create({
-        // @ts-ignore
         data: {
           title: dto.title,
           description: dto.description,
@@ -90,7 +89,7 @@ export class BusinessService {
       include: {
         owner: true,
         BusinessImage: true,
-        category: true
+        category: true,
       },
     });
   }
