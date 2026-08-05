@@ -23,6 +23,7 @@ import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { BusinessService } from './business.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import {
+  FindByStatusQueryDto,
   UpdateBusinessDto,
   UpdateBusinessStatusDto,
 } from './dto/update-business.dto';
@@ -62,12 +63,22 @@ export class BusinessController {
   @Get()
   findAll(
     @Req() req: { user?: { role: Role; sub: string } },
-    @Query('status') status?: BusinessStatus,
+    @Query() query: FindByStatusQueryDto,
   ) {
     const user = req.user;
 
-    if (status) {
-      return this.businessService.findByStatus(status);
+    if (!user) {
+      return this.businessService.findByStatus('APPROVED');
+    }
+
+    if (query.status) {
+      if (user.role === Role.Owner) {
+        return this.businessService.findPerOwnerByStatus(
+          user.sub,
+          query.status,
+        );
+      }
+      return this.businessService.findByStatus(query.status);
     }
 
     if (user && user.role === Role.Owner) {

@@ -118,6 +118,17 @@ export class BusinessService {
     });
   }
 
+  async findPerOwnerByStatus(ownerId: string, status: BusinessStatus) {
+    return await this.prisma.business.findMany({
+      where: { ownerId, status },
+      include: {
+        owner: true,
+        BusinessImage: true,
+        category: true,
+      },
+    });
+  }
+
   async findOne(id: string) {
     const business = await this.prisma.business.findUnique({
       where: { id },
