@@ -45,13 +45,6 @@ export class BusinessService {
         },
       });
       if (uploads.length) await this.addImages(business.id, uploads);
-      // if (business && dto.image) {
-      //   const businessImage = await this.businessImageService.create({
-      //     businessId: business.id,
-      //     url: dto.image,
-      //   });
-      //   await this.updateImage(business.id, businessImage.id);
-      // }
     } catch (error: any) {
       this.uploadService.removeMany(uploads.map((upload) => upload.path));
       if (error.code === 'P2025') {
@@ -86,47 +79,91 @@ export class BusinessService {
     return images;
   }
 
-  async findAll() {
-    return await this.prisma.business.findMany({
-      include: {
-        owner: true,
-        BusinessImage: true,
-        category: true,
-      },
-    });
+  async findAll(take: number, skip: number, lastId: string | undefined) {
+    const [total, businesses] = await Promise.all([
+      this.prisma.business.count(),
+      this.prisma.business.findMany({
+        take,
+        skip,
+        ...(lastId ? { cursor: { id: lastId } } : {}),
+        include: {
+          owner: true,
+          BusinessImage: true,
+          category: true,
+        },
+      }),
+    ]);
+    return { businesses, page: { total, take, skip } };
   }
 
-  async findPerOwner(id: string) {
-    return await this.prisma.business.findMany({
-      where: { ownerId: id },
-      include: {
-        owner: true,
-        BusinessImage: true,
-        category: true,
-      },
-    });
+  async findPerOwner(
+    id: string,
+    take: number,
+    skip: number,
+    lastId: string | undefined,
+  ) {
+    const [total, businesses] = await Promise.all([
+      this.prisma.business.count({ where: { ownerId: id } }),
+      this.prisma.business.findMany({
+        where: { ownerId: id },
+        take,
+        skip,
+        ...(lastId ? { cursor: { id: lastId } } : {}),
+        include: {
+          owner: true,
+          BusinessImage: true,
+          category: true,
+        },
+      }),
+    ]);
+    return { businesses, page: { total, take, skip } };
   }
 
-  async findByStatus(status: BusinessStatus) {
-    return await this.prisma.business.findMany({
-      where: { status },
-      include: {
-        owner: true,
-        BusinessImage: true,
-        category: true,
-      },
-    });
+  async findByStatus(
+    status: BusinessStatus,
+    take: number,
+    skip: number,
+    lastId: string | undefined,
+  ) {
+    const [total, businesses] = await Promise.all([
+      this.prisma.business.count({ where: { status } }),
+      this.prisma.business.findMany({
+        where: { status },
+        take,
+        skip,
+        ...(lastId ? { cursor: { id: lastId } } : {}),
+        include: {
+          owner: true,
+          BusinessImage: true,
+          category: true,
+        },
+      }),
+    ]);
+    return { businesses, page: { total, take, skip } };
   }
 
-  async findPerOwnerByStatus(ownerId: string, status: BusinessStatus) {
-    return await this.prisma.business.findMany({
-      where: { ownerId, status },
-      include: {
-        owner: true,
-        BusinessImage: true,
-        category: true,
-      },
-    });
+  async findPerOwnerByStatus(
+    ownerId: string,
+    status: BusinessStatus,
+    take: number,
+    skip: number,
+    lastId: string | undefined,
+  ) {
+    const [total, businesses] = await Promise.all([
+      this.prisma.business.count({ where: { ownerId, status } }),
+      this.prisma.business.findMany({
+        where: { ownerId, status },
+        take,
+        skip,
+        ...(lastId ? { cursor: { id: lastId } } : {}),
+        include: {
+          owner: true,
+          BusinessImage: true,
+          category: true,
+        },
+      }),
+    ]);
+    return { businesses, page: { total, take, skip } };
   }
 
   async findOne(id: string) {
@@ -134,7 +171,6 @@ export class BusinessService {
       where: { id },
       include: {
         owner: true,
-        products: true,
         BusinessImage: true,
         category: true,
       },
@@ -152,7 +188,6 @@ export class BusinessService {
       where: { id, ownerId },
       include: {
         owner: true,
-        products: true,
         BusinessImage: true,
         category: true,
       },
@@ -316,7 +351,6 @@ export class BusinessService {
         business: {
           include: {
             owner: true,
-            products: true,
             BusinessImage: true,
             category: true,
           },

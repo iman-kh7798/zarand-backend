@@ -1,6 +1,13 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateBusinessDto } from './create-business.dto';
-import { IsEnum, IsIn, IsOptional } from 'class-validator';
+import {
+  IsEnum,
+  IsIn,
+  IsNumberString,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BusinessStatus } from '@prisma/client';
 
@@ -10,6 +17,16 @@ export class FindByStatusQueryDto {
   @IsOptional()
   @IsEnum(BusinessStatus)
   status?: BusinessStatus;
+
+  @IsNumberString()
+  take: number;
+
+  @IsNumberString()
+  skip: number;
+
+  @IsUUID()
+  @IsOptional()
+  lastId?: string;
 }
 export class UpdateBusinessStatusDto {
   @ApiProperty({ enum: [BusinessStatus.APPROVED, BusinessStatus.REJECTED] })

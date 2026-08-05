@@ -63,7 +63,7 @@ model Business {
   orders        Order[]
   products      Product[]
 
-  @@index([status])
+  @@index([status, createdAt])
   @@index([ownerId, status])
   @@index([categoryId])
 }

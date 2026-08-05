@@ -70,9 +70,12 @@ export class BusinessController {
     @Req() req: { user?: { role: Role; sub: string } },
   ) {
     const user = req.user;
+    const take = +query.take;
+    const skip = +query.skip;
+    const cursor = query.lastId;
 
     if (!user) {
-      return this.businessService.findByStatus('APPROVED');
+      return this.businessService.findByStatus('APPROVED', take, skip, cursor);
     }
 
     if (query.status) {
@@ -80,29 +83,25 @@ export class BusinessController {
         return this.businessService.findPerOwnerByStatus(
           user.sub,
           query.status,
+          take,
+          skip,
+          cursor,
         );
       }
-      return this.businessService.findByStatus(query.status);
+      return this.businessService.findByStatus(
+        query.status,
+        take,
+        skip,
+        cursor,
+      );
     }
 
     if (user && user.role === Role.Owner) {
-      return this.businessService.findPerOwner(user.sub);
+      return this.businessService.findPerOwner(user.sub, take, skip, cursor);
     }
-    return this.businessService.findAll();
+    return this.businessService.findAll(take, skip, cursor);
   }
 
-  @ApiBearerAuth('access-token')
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Owner)
-  @Get('by-owner')
-  findAllByOwner(@Req() req: { user?: { role: Role; sub: string } }) {
-    const user = req.user;
-    if (user) {
-      return this.businessService.findPerOwner(user.sub);
-    } else {
-      throw new NotFoundError('OWNER_NOT_FOUND');
-    }
-  }
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Admin, Role.Owner)
