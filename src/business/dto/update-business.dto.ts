@@ -9,7 +9,7 @@ export class UpdateBusinessDto extends PartialType(CreateBusinessDto) {}
 export class FindByStatusQueryDto {
   @IsOptional()
   @IsEnum(BusinessStatus)
-  status: BusinessStatus;
+  status?: BusinessStatus;
 }
 export class UpdateBusinessStatusDto {
   @ApiProperty({ enum: [BusinessStatus.APPROVED, BusinessStatus.REJECTED] })

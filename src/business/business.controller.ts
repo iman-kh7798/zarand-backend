@@ -35,6 +35,7 @@ import { UploadService } from 'src/upload/upload.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { NotFoundError } from 'rxjs';
 import { BusinessStatus } from '@prisma/client';
+import { OptionalAuthGuard } from 'src/auth/optional.guard';
 
 @Controller('business')
 export class BusinessController {
@@ -60,10 +61,13 @@ export class BusinessController {
     const uploads = files?.length ? this.uploadService.createMany(files) : [];
     return this.businessService.create(dto, userId, uploads);
   }
+
+  @ApiBearerAuth('access-token')
+  @UseGuards(OptionalAuthGuard, RolesGuard)
   @Get()
   findAll(
-    @Req() req: { user?: { role: Role; sub: string } },
     @Query() query: FindByStatusQueryDto,
+    @Req() req: { user?: { role: Role; sub: string } },
   ) {
     const user = req.user;
 
