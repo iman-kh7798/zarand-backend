@@ -1,6 +1,5 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -37,6 +36,12 @@ model User {
   @@index([roleId], map: "User_roleId_fkey")
 }
 
+enum BusinessStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 /// کسب‌وکار (فروشنده)
 model Business {
   id            String             @id @default(uuid()) @db.Char(36)
@@ -48,7 +53,7 @@ model Business {
   ownerId       String             @db.Char(36)
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
-  status        String             @default("PENDING")
+  status        BusinessStatus     @default(PENDING)
   imageId       String?            @db.Char(36)
   categoryId    String?            @db.Char(36)
   category      Category?          @relation(fields: [categoryId], references: [id])
@@ -58,7 +63,8 @@ model Business {
   orders        Order[]
   products      Product[]
 
-  @@index([ownerId])
+  @@index([status])
+  @@index([ownerId, status])
   @@index([categoryId])
 }
 

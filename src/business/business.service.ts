@@ -90,7 +90,7 @@ export class BusinessService {
       include: {
         owner: true,
         BusinessImage: true,
-        category: true
+        category: true,
       },
     });
   }
@@ -176,11 +176,10 @@ export class BusinessService {
   }
 
   async updateStatus(id: string, body: UpdateBusinessStatusDto) {
-    const dbStatus = body.status.toUpperCase();
     return await this.prisma.business.update({
       where: { id },
       data: {
-        status: dbStatus,
+        status: body.status,
       },
     });
   }

@@ -1,10 +1,14 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateBusinessDto } from './create-business.dto';
-import { IsEnum } from 'class-validator';
+import { IsIn } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { BusinessStatus } from '@prisma/client';
 
 export class UpdateBusinessDto extends PartialType(CreateBusinessDto) {}
 
+
 export class UpdateBusinessStatusDto {
-  @IsEnum(['approved', 'rejected'])
-  status: 'approved' | 'rejected';
+  @ApiProperty({ enum: [BusinessStatus.APPROVED, BusinessStatus.REJECTED] })
+  @IsIn([BusinessStatus.APPROVED, BusinessStatus.REJECTED])
+  status: typeof BusinessStatus.APPROVED | typeof BusinessStatus.REJECTED;
 }
