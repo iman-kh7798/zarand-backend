@@ -14,6 +14,7 @@ import {
 import { BusinessImageService } from 'src/business-image/business-image.service';
 import { CategoriesService } from 'src/categories/categories.service';
 import { UploadService } from 'src/upload/upload.service';
+import { BusinessStatus } from '@prisma/client';
 
 @Injectable()
 export class BusinessService {
@@ -95,9 +96,20 @@ export class BusinessService {
     });
   }
 
-  async findPerBusiness(id: string) {
+  async findPerOwner(id: string) {
     return await this.prisma.business.findMany({
       where: { ownerId: id },
+      include: {
+        owner: true,
+        BusinessImage: true,
+        category: true,
+      },
+    });
+  }
+
+  async findByStatus(status: BusinessStatus) {
+    return await this.prisma.business.findMany({
+      where: { status },
       include: {
         owner: true,
         BusinessImage: true,
