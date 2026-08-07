@@ -29,6 +29,13 @@ export class CreateCategoryDto {
   parentId?: string;
 }
 
+export class FindBySlubDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(255)
+  slug: string;
+}
+
 export class UpdateCategoryDto {
   @IsOptional()
   @IsString()

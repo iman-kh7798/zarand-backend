@@ -61,8 +61,21 @@ export class CategoriesService {
       where: { id },
       include: {
         children: true,
-        parent: true,
-        businesses: true,
+      },
+    });
+
+    if (!category) {
+      throw new NotFoundException('CATEGORY_NOT_FOUND');
+    }
+
+    return category;
+  }
+
+  async findOneBySlug(slug: string) {
+    const category = await this.prisma.category.findUnique({
+      where: { slug },
+      include: {
+        children: true,
       },
     });
 

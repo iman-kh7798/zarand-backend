@@ -12,6 +12,7 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CategoriesService } from './categories.service';
@@ -23,6 +24,7 @@ import {
   SetBusinessCategoryDto,
   CreateCategoryDto,
   UpdateCategoryDto,
+  FindBySlubDto,
 } from './categories.dto';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { UploadService } from 'src/upload/upload.service';
@@ -37,6 +39,11 @@ export class CategoriesController {
   @Get()
   findAll() {
     return this.categoriesService.findAll();
+  }
+
+  @Get('slug/:slug')
+  findBySlub(@Param('slug') slug: string) {
+    return this.categoriesService.findOneBySlug(slug);
   }
 
   @Get(':id')

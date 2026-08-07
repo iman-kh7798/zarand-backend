@@ -99,6 +99,7 @@ model Category {
   parent        Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
   children      Category[] @relation("CategoryToCategory")
 
+  @@index([slug])
   @@index([parentId], map: "Category_parentId_fkey")
 }
 

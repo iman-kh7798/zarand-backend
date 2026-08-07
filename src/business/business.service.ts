@@ -182,40 +182,6 @@ export class BusinessService {
     return business;
   }
 
-  async findOnePublic(id: string) {
-    const business = await this.prisma.business.findUnique({
-      where: { id },
-      include: {
-        owner: true,
-        BusinessImage: true,
-        category: true,
-      },
-    });
-
-    if (!business) {
-      throw new NotFoundException('BUSSINESS_NOT_FOUND');
-    }
-
-    return business;
-  }
-
-  async findOnePerOwner(id: string, ownerId: string) {
-    const business = await this.prisma.business.findUnique({
-      where: { id, ownerId },
-      include: {
-        owner: true,
-        BusinessImage: true,
-        category: true,
-      },
-    });
-
-    if (!business) {
-      throw new NotFoundException('BUSSINESS_NOT_FOUND');
-    }
-
-    return business;
-  }
-
   async update(id: string, dto: UpdateBusinessDto, ownerId: string) {
     return await this.prisma.business.update({
       where: { id, ownerId },

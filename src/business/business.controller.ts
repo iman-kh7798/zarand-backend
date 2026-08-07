@@ -102,21 +102,12 @@ export class BusinessController {
     return this.businessService.findAll(take, skip, cursor);
   }
 
-  @ApiBearerAuth('access-token')
-  @UseGuards(OptionalAuthGuard, RolesGuard)
   @Get(':id')
   findOne(
     @Req() req: { user: { role: Role; sub: string } },
     @Param('id') id: string,
   ) {
-    const user = req.user;
-    if (!user) {
-      return this.businessService.findOnePublic(id);
-    }
-    if (user.role === Role.Admin) {
-      return this.businessService.findOne(id);
-    }
-    return this.businessService.findOnePerOwner(id, user.sub);
+    return this.businessService.findOne(id);
   }
 
   @ApiBearerAuth('access-token')
