@@ -188,6 +188,7 @@ export class BusinessService {
       include: {
         owner: true,
         BusinessImage: true,
+        category: true,
       },
     });
 
