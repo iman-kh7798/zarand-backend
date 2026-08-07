@@ -1,10 +1,35 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateBusinessDto } from './create-business.dto';
-import { IsEnum } from 'class-validator';
+import {
+  IsEnum,
+  IsIn,
+  IsNumberString,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { BusinessStatus } from '@prisma/client';
 
 export class UpdateBusinessDto extends PartialType(CreateBusinessDto) {}
 
+export class FindByStatusQueryDto {
+  @IsOptional()
+  @IsEnum(BusinessStatus)
+  status?: BusinessStatus;
+
+  @IsNumberString()
+  take: number;
+
+  @IsNumberString()
+  skip: number;
+
+  @IsUUID()
+  @IsOptional()
+  lastId?: string;
+}
 export class UpdateBusinessStatusDto {
-  @IsEnum(['approved', 'rejected'])
-  status: 'approved' | 'rejected';
+  @ApiProperty({ enum: [BusinessStatus.APPROVED, BusinessStatus.REJECTED] })
+  @IsIn([BusinessStatus.APPROVED, BusinessStatus.REJECTED])
+  status: typeof BusinessStatus.APPROVED | typeof BusinessStatus.REJECTED;
 }

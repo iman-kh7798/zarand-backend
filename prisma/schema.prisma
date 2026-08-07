@@ -62,7 +62,10 @@ model Business {
   favoritedBy   FavoriteBusiness[]
   orders        Order[]
   products      Product[]
+  lat           Decimal?           @db.Decimal(10, 7)
+  lng           Decimal?           @db.Decimal(10, 7)
 
+  @@index([status, createdAt])
   @@index([ownerId, status])
   @@index([categoryId])
 }

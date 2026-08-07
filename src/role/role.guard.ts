@@ -24,7 +24,6 @@ export class RolesGuard implements CanActivate {
       .switchToHttp()
       .getRequest();
     const user = request.user; // مثلا از JWT اومده
-    console.log(user, requiredRoles);
 
     // فرض می‌کنیم user.roles آرایه‌ای از roleهاست
     // یا اگر یک role داری، خودت تطبیق بده

@@ -14,6 +14,7 @@ import {
 import { BusinessImageService } from 'src/business-image/business-image.service';
 import { CategoriesService } from 'src/categories/categories.service';
 import { UploadService } from 'src/upload/upload.service';
+import { BusinessStatus } from '@prisma/client';
 
 @Injectable()
 export class BusinessService {
@@ -43,13 +44,6 @@ export class BusinessService {
         },
       });
       if (uploads.length) await this.addImages(business.id, uploads);
-      // if (business && dto.image) {
-      //   const businessImage = await this.businessImageService.create({
-      //     businessId: business.id,
-      //     url: dto.image,
-      //   });
-      //   await this.updateImage(business.id, businessImage.id);
-      // }
     } catch (error: any) {
       this.uploadService.removeMany(uploads.map((upload) => upload.path));
       if (error.code === 'P2025') {
@@ -84,25 +78,91 @@ export class BusinessService {
     return images;
   }
 
-  async findAll() {
-    return await this.prisma.business.findMany({
-      include: {
-        owner: true,
-        BusinessImage: true,
-        category: true,
-      },
-    });
+  async findAll(take: number, skip: number, lastId: string | undefined) {
+    const [total, businesses] = await Promise.all([
+      this.prisma.business.count(),
+      this.prisma.business.findMany({
+        take,
+        skip,
+        ...(lastId ? { cursor: { id: lastId } } : {}),
+        include: {
+          owner: true,
+          BusinessImage: true,
+          category: true,
+        },
+      }),
+    ]);
+    return { businesses, page: { total, take, skip } };
   }
 
-  async findPerBusiness(id: string) {
-    return await this.prisma.business.findMany({
-      where: { ownerId: id },
-      include: {
-        owner: true,
-        BusinessImage: true,
-        category: true,
-      },
-    });
+  async findPerOwner(
+    id: string,
+    take: number,
+    skip: number,
+    lastId: string | undefined,
+  ) {
+    const [total, businesses] = await Promise.all([
+      this.prisma.business.count({ where: { ownerId: id } }),
+      this.prisma.business.findMany({
+        where: { ownerId: id },
+        take,
+        skip,
+        ...(lastId ? { cursor: { id: lastId } } : {}),
+        include: {
+          owner: true,
+          BusinessImage: true,
+          category: true,
+        },
+      }),
+    ]);
+    return { businesses, page: { total, take, skip } };
+  }
+
+  async findByStatus(
+    status: BusinessStatus,
+    take: number,
+    skip: number,
+    lastId: string | undefined,
+  ) {
+    const [total, businesses] = await Promise.all([
+      this.prisma.business.count({ where: { status } }),
+      this.prisma.business.findMany({
+        where: { status },
+        take,
+        skip,
+        ...(lastId ? { cursor: { id: lastId } } : {}),
+        include: {
+          owner: true,
+          BusinessImage: true,
+          category: true,
+        },
+      }),
+    ]);
+    return { businesses, page: { total, take, skip } };
+  }
+
+  async findPerOwnerByStatus(
+    ownerId: string,
+    status: BusinessStatus,
+    take: number,
+    skip: number,
+    lastId: string | undefined,
+  ) {
+    const [total, businesses] = await Promise.all([
+      this.prisma.business.count({ where: { ownerId, status } }),
+      this.prisma.business.findMany({
+        where: { ownerId, status },
+        take,
+        skip,
+        ...(lastId ? { cursor: { id: lastId } } : {}),
+        include: {
+          owner: true,
+          BusinessImage: true,
+          category: true,
+        },
+      }),
+    ]);
+    return { businesses, page: { total, take, skip } };
   }
 
   async findOne(id: string) {
@@ -110,9 +170,24 @@ export class BusinessService {
       where: { id },
       include: {
         owner: true,
-        products: true,
         BusinessImage: true,
         category: true,
+      },
+    });
+
+    if (!business) {
+      throw new NotFoundException('BUSSINESS_NOT_FOUND');
+    }
+
+    return business;
+  }
+
+  async findOnePublic(id: string) {
+    const business = await this.prisma.business.findUnique({
+      where: { id },
+      include: {
+        owner: true,
+        BusinessImage: true,
       },
     });
 
@@ -128,7 +203,6 @@ export class BusinessService {
       where: { id, ownerId },
       include: {
         owner: true,
-        products: true,
         BusinessImage: true,
         category: true,
       },
@@ -175,11 +249,10 @@ export class BusinessService {
   }
 
   async updateStatus(id: string, body: UpdateBusinessStatusDto) {
-    const dbStatus = body.status.toUpperCase();
     return await this.prisma.business.update({
       where: { id },
       data: {
-        status: dbStatus,
+        status: body.status,
       },
     });
   }
@@ -293,7 +366,6 @@ export class BusinessService {
         business: {
           include: {
             owner: true,
-            products: true,
             BusinessImage: true,
             category: true,
           },

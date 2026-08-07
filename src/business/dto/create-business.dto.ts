@@ -28,4 +28,12 @@ export class CreateBusinessDto {
   @IsUUID()
   @IsOptional()
   categoryId?: string;
+
+  @IsNumberString()
+  @IsOptional()
+  lat?: string;
+
+  @IsNumberString()
+  @IsOptional()
+  lng?: string;
 }
