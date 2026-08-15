@@ -12,6 +12,7 @@ import { UploadModule } from './upload/upload.module';
 import { BusinessImageModule } from './business-image/business-image.module';
 import { ProductImageModule } from './product-image/product-image.module';
 import { SmsModule } from './sms/sms.module';
+import { BusinessReviewModule } from './business-review/business-review.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 
@@ -32,6 +33,7 @@ import { join } from 'path';
     BusinessImageModule,
     ProductImageModule,
     SmsModule,
+    BusinessReviewModule,
     // FavoriteBusinessModule,
   ],
   controllers: [AppController],

@@ -13,8 +13,6 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
-  Sse,
-  RequestMethod,
   UploadedFiles,
   BadRequestException,
   Query,
@@ -33,8 +31,6 @@ import { Roles } from 'src/role/role.decorator';
 import { Role } from 'src/role/role.enum';
 import { UploadService } from 'src/upload/upload.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
-import { NotFoundError } from 'rxjs';
-import { BusinessStatus } from '@prisma/client';
 import { OptionalAuthGuard } from 'src/auth/optional.guard';
 
 @Controller('business')
