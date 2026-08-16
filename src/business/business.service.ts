@@ -38,6 +38,8 @@ export class BusinessService {
           address: dto.address as string,
           phone: dto.phone,
           owner: { connect: { id: userId } },
+          lat: dto.lat,
+          lng: dto.lng,
           ...(dto.categoryId
             ? { category: { connect: { id: dto.categoryId } } }
             : {}),
@@ -190,6 +192,8 @@ export class BusinessService {
         description: dto.description,
         address: dto.address,
         phone: dto.phone,
+        lat: dto.lat,
+        lng: dto.lng,
       },
     });
   }

@@ -63,7 +63,6 @@ export class CategoriesService {
         children: true,
       },
     });
-
     if (!category) {
       throw new NotFoundException('CATEGORY_NOT_FOUND');
     }
@@ -191,6 +190,18 @@ export class CategoriesService {
 
     return await this.prisma.business.findMany({
       where: { categoryId },
+      include: {
+        products: true,
+        BusinessImage: true,
+      },
+    });
+  }
+
+  async getActiveBusinessesByCategory(categoryId: string) {
+    await this.findOne(categoryId);
+
+    return await this.prisma.business.findMany({
+      where: { categoryId, status: 'APPROVED' },
       include: {
         products: true,
         BusinessImage: true,

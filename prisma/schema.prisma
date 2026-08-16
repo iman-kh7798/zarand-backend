@@ -69,7 +69,7 @@ model Business {
 
   @@index([status, createdAt])
   @@index([ownerId, status])
-  @@index([categoryId])
+  @@index([categoryId, status])
 }
 
 /// لیست علاقه‌مندی کسب‌وکارهای کاربران

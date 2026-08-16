@@ -13,6 +13,8 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
   Query,
+  Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CategoriesService } from './categories.service';
@@ -28,6 +30,7 @@ import {
 } from './categories.dto';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { UploadService } from 'src/upload/upload.service';
+import { OptionalAuthGuard } from 'src/auth/optional.guard';
 
 @Controller('categories')
 export class CategoriesController {
@@ -51,9 +54,21 @@ export class CategoriesController {
     return this.categoriesService.findOne(id);
   }
 
+  @ApiBearerAuth('access-token')
+  @UseGuards(OptionalAuthGuard, RolesGuard)
   @Get(':id/businesses')
-  getBusinessesByCategory(@Param('id') id: string) {
-    return this.categoriesService.getBusinessesByCategory(id);
+  getBusinessesByCategory(
+    @Param('id') id: string,
+    @Req() req: { user?: { role: Role; sub: string } },
+  ) {
+    const user = req.user;
+    if (!user) {
+      return this.categoriesService.getActiveBusinessesByCategory(id);
+    }
+    if (user.role === Role.Admin) {
+      return this.categoriesService.getBusinessesByCategory(id);
+    }
+    throw new ForbiddenException();
   }
 
   @ApiBearerAuth('access-token')
