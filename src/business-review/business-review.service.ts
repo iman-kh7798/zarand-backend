@@ -33,7 +33,6 @@ export class BusinessReviewService {
     const review = await this.prisma.businessReview.create({
       data: {
         rating: dto.rating,
-        title: dto.title,
         body: dto.body,
         businessId,
         userId,
@@ -52,7 +51,6 @@ export class BusinessReviewService {
       where: { id },
       data: {
         rating: dto.rating ?? review.rating,
-        title: dto.title ?? review.title,
         body: dto.body ?? review.body,
       },
     });

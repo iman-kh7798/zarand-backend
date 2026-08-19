@@ -45,31 +45,59 @@ enum BusinessStatus {
 
 /// کسب‌وکار (فروشنده)
 model Business {
-  id              String             @id @default(uuid()) @db.Char(36)
+  id              String               @id @default(uuid()) @db.Char(36)
   title           String
   description     String?
   address         Json?
   phone           String?
-  isActive        Boolean            @default(true)
-  ownerId         String             @db.Char(36)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  status          BusinessStatus     @default(PENDING)
-  imageId         String?            @db.Char(36)
-  categoryId      String?            @db.Char(36)
-  category        Category?          @relation(fields: [categoryId], references: [id])
-  owner           User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  isActive        Boolean              @default(true)
+  ownerId         String               @db.Char(36)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  status          BusinessStatus       @default(PENDING)
+  imageId         String?              @db.Char(36)
+  categoryId      String?              @db.Char(36)
+  category        Category?            @relation(fields: [categoryId], references: [id])
+  owner           User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   BusinessImage   BusinessImage[]
   favoritedBy     FavoriteBusiness[]
   orders          Order[]
   products        Product[]
-  lat             Decimal?           @db.Decimal(10, 7)
-  lng             Decimal?           @db.Decimal(10, 7)
+  lat             Decimal?             @db.Decimal(10, 7)
+  lng             Decimal?             @db.Decimal(10, 7)
   businessReviews BusinessReview[]
+  socialLinks     BusinessSocialLink[]
 
   @@index([status, createdAt])
   @@index([ownerId, status])
   @@index([categoryId, status])
+}
+
+enum SocialPlatform {
+  INSTAGRAM
+  TELEGRAM
+  WHATSAPP
+  TWITTER
+  LINKEDIN
+  FACEBOOK
+  YOUTUBE
+  WEBSITE
+  EITAA
+  BALE
+  RUBIKA
+}
+
+model BusinessSocialLink {
+  id         String         @id @default(uuid()) @db.Char(36)
+  businessId String         @db.Char(36)
+  platform   SocialPlatform
+  url        String
+  createdAt  DateTime       @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, platform])
+  @@index([businessId])
 }
 
 /// لیست علاقه‌مندی کسب‌وکارهای کاربران
@@ -246,7 +274,6 @@ model Review {
 model BusinessReview {
   id         String   @id @default(uuid()) @db.Char(36)
   rating     Int
-  title      String?
   body       String?
   createdAt  DateTime @default(now())
   businessId String   @db.Char(36)

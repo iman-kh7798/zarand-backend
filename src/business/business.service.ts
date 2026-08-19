@@ -6,7 +6,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateBusinessDto } from './dto/create-business.dto';
+import {
+  CreateBusinessDto,
+  CreateBusinessSocialLinkDto,
+} from './dto/create-business.dto';
 import {
   UpdateBusinessDto,
   UpdateBusinessStatusDto,
@@ -14,7 +17,7 @@ import {
 import { BusinessImageService } from 'src/business-image/business-image.service';
 import { CategoriesService } from 'src/categories/categories.service';
 import { UploadService } from 'src/upload/upload.service';
-import { BusinessStatus } from '@prisma/client';
+import { BusinessStatus, Prisma } from '@prisma/client';
 
 @Injectable()
 export class BusinessService {
@@ -43,6 +46,18 @@ export class BusinessService {
           ...(dto.categoryId
             ? { category: { connect: { id: dto.categoryId } } }
             : {}),
+          ...(dto.socialLinks?.length
+            ? {
+                socialLinks: {
+                  createMany: {
+                    data: dto.socialLinks.map((link) => ({
+                      platform: link.platform,
+                      url: link.url,
+                    })),
+                  },
+                },
+              }
+            : {}),
         },
       });
       if (uploads.length) await this.addImages(business.id, uploads);
@@ -50,6 +65,9 @@ export class BusinessService {
       this.uploadService.removeMany(uploads.map((upload) => upload.path));
       if (error.code === 'P2025') {
         throw new NotFoundException('USER_NOT_EXISTS');
+      }
+      if (error.code === 'P2002') {
+        throw new BadRequestException('DUPLICATE_SOCIAL_PLATFORM');
       }
       throw error;
     }
@@ -185,29 +203,72 @@ export class BusinessService {
   }
 
   async update(id: string, dto: UpdateBusinessDto, ownerId: string) {
-    return await this.prisma.business.update({
-      where: { id, ownerId },
-      data: {
-        title: dto.title,
-        description: dto.description,
-        address: dto.address,
-        phone: dto.phone,
-        lat: dto.lat,
-        lng: dto.lng,
-      },
-    });
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const business = await tx.business.update({
+          where: { id, ownerId },
+          data: {
+            title: dto.title,
+            description: dto.description,
+            address: dto.address,
+            phone: dto.phone,
+            lat: dto.lat,
+            lng: dto.lng,
+          },
+        });
+
+        if (dto.socialLinks) {
+          await this.replaceSocialLinks(tx, id, dto.socialLinks);
+        }
+
+        return business;
+      });
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException('BUSINESS_NOT_EXISTS');
+      }
+      if (error.code === 'P2002') {
+        throw new BadRequestException('DUPLICATE_SOCIAL_PLATFORM');
+      }
+      throw error;
+    }
   }
 
   async adminUpdate(id: string, dto: UpdateBusinessDto) {
-    return await this.prisma.business.update({
-      where: { id },
-      data: {
-        title: dto.title,
-        description: dto.description,
-        address: dto.address,
-        phone: dto.phone,
-      },
+    return await this.prisma.$transaction(async (tx) => {
+      const business = await tx.business.update({
+        where: { id },
+        data: {
+          title: dto.title,
+          description: dto.description,
+          address: dto.address,
+          phone: dto.phone,
+        },
+      });
+
+      if (dto.socialLinks) {
+        await this.replaceSocialLinks(tx, id, dto.socialLinks);
+      }
+
+      return business;
     });
+  }
+
+  private async replaceSocialLinks(
+    tx: Prisma.TransactionClient,
+    businessId: string,
+    links: CreateBusinessSocialLinkDto[],
+  ) {
+    await tx.businessSocialLink.deleteMany({ where: { businessId } });
+    if (links.length) {
+      await tx.businessSocialLink.createMany({
+        data: links.map((link) => ({
+          businessId,
+          platform: link.platform,
+          url: link.url,
+        })),
+      });
+    }
   }
 
   async updateImage(id: string, imageId: string) {

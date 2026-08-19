@@ -1,13 +1,27 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
+import { SocialPlatform } from '@prisma/client';
 import {
   IsString,
   IsOptional,
   IsNotEmpty,
-  Matches,
-  IsNumber,
   IsNumberString,
   IsUUID,
+  IsEnum,
+  IsUrl,
+  IsArray,
+  ArrayMaxSize,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class CreateBusinessSocialLinkDto {
+  @IsEnum(SocialPlatform)
+  platform: SocialPlatform;
+
+  @IsUrl()
+  @IsNotEmpty()
+  url: string;
+}
 
 export class CreateBusinessDto {
   @IsString()
@@ -36,4 +50,11 @@ export class CreateBusinessDto {
   @IsNumberString()
   @IsOptional()
   lng?: string;
+
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => CreateBusinessSocialLinkDto)
+  @IsOptional()
+  socialLinks?: CreateBusinessSocialLinkDto[];
 }
