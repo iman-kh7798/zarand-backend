@@ -31,6 +31,7 @@ import {
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { UploadService } from 'src/upload/upload.service';
 import { OptionalAuthGuard } from 'src/auth/optional.guard';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Controller('categories')
 export class CategoriesController {
@@ -45,8 +46,15 @@ export class CategoriesController {
   }
 
   @Get('slug/:slug')
-  findBySlub(@Param('slug') slug: string) {
-    return this.categoriesService.findOneBySlug(slug);
+  findBySlub(@Param('slug') slug: string, @Query() query: PaginationDto) {
+    const take = query.take ? +query.take : 10;
+    const skip = query.skip ? +query.skip : 0;
+    const lastId = query.lastId;
+    return this.categoriesService.findOneBySlug(slug, {
+      take,
+      skip,
+      lastId,
+    });
   }
 
   @Get(':id')
@@ -59,16 +67,22 @@ export class CategoriesController {
   @Get(':id/businesses')
   getBusinessesByCategory(
     @Param('id') id: string,
+    @Query() query: PaginationDto,
     @Req() req: { user?: { role: Role; sub: string } },
   ) {
     const user = req.user;
-    if (!user) {
-      return this.categoriesService.getActiveBusinessesByCategory(id);
+    const take = query.take ? +query.take : 10;
+    const skip = query.skip ? +query.skip : 0;
+    const lastId = query.lastId;
+    const qr = {
+      take,
+      skip,
+      lastId,
+    };
+    if (user && user.role === Role.Admin) {
+      return this.categoriesService.getBusinessesByCategory(id, qr);
     }
-    if (user.role === Role.Admin) {
-      return this.categoriesService.getBusinessesByCategory(id);
-    }
-    throw new ForbiddenException();
+    return this.categoriesService.getActiveBusinessesByCategory(id, qr);
   }
 
   @ApiBearerAuth('access-token')

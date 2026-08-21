@@ -11,6 +11,7 @@ import {
   SetBusinessCategoryDto,
   UpdateCategoryDto,
 } from './categories.dto';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Injectable()
 export class CategoriesService {
@@ -70,11 +71,18 @@ export class CategoriesService {
     return category;
   }
 
-  async findOneBySlug(slug: string) {
+  async findOneBySlug(slug: string, query: PaginationDto) {
     const category = await this.prisma.category.findUnique({
       where: { slug },
+
       include: {
         children: true,
+        businesses: {
+          take: query.take,
+          skip: query.skip,
+          ...(query.lastId ? { cursor: { id: query.lastId } } : {}),
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 
@@ -185,26 +193,37 @@ export class CategoriesService {
     });
   }
 
-  async getBusinessesByCategory(categoryId: string) {
+  async getBusinessesByCategory(categoryId: string, query: PaginationDto) {
     await this.findOne(categoryId);
 
     return await this.prisma.business.findMany({
       where: { categoryId },
+      take: query.take,
+      skip: query.skip,
+      ...(query.lastId ? { cursor: { id: query.lastId } } : {}),
       include: {
         products: true,
         BusinessImage: true,
+        socialLinks: true,
       },
     });
   }
 
-  async getActiveBusinessesByCategory(categoryId: string) {
+  async getActiveBusinessesByCategory(
+    categoryId: string,
+    query: PaginationDto,
+  ) {
     await this.findOne(categoryId);
 
     return await this.prisma.business.findMany({
       where: { categoryId, status: 'APPROVED' },
+      take: query.take,
+      skip: query.skip,
+      ...(query.lastId ? { cursor: { id: query.lastId } } : {}),
       include: {
         products: true,
         BusinessImage: true,
+        socialLinks: true,
       },
     });
   }

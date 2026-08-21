@@ -10,24 +10,15 @@ import {
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BusinessStatus } from '@prisma/client';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 export class UpdateBusinessDto extends PartialType(CreateBusinessDto) {}
-
-export class FindByStatusQueryDto {
+export class FindByStatusQueryDto extends PartialType(PaginationDto) {
   @IsOptional()
   @IsEnum(BusinessStatus)
   status?: BusinessStatus;
-
-  @IsNumberString()
-  take: number;
-
-  @IsNumberString()
-  skip: number;
-
-  @IsUUID()
-  @IsOptional()
-  lastId?: string;
 }
+
 export class UpdateBusinessStatusDto {
   @ApiProperty({ enum: [BusinessStatus.APPROVED, BusinessStatus.REJECTED] })
   @IsIn([BusinessStatus.APPROVED, BusinessStatus.REJECTED])

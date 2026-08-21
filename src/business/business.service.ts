@@ -18,12 +18,15 @@ import { BusinessImageService } from 'src/business-image/business-image.service'
 import { CategoriesService } from 'src/categories/categories.service';
 import { UploadService } from 'src/upload/upload.service';
 import { BusinessStatus, Prisma } from '@prisma/client';
+import { Role } from 'src/role/role.enum';
+import { FavoriteBusinessService } from 'src/favorite-business/favorite-business.service';
 
 @Injectable()
 export class BusinessService {
   constructor(
     private prisma: PrismaService,
     private businessImageService: BusinessImageService,
+    private favoriteBusinessService: FavoriteBusinessService,
     private categoryService: CategoriesService,
     private uploadService: UploadService,
   ) {}
@@ -185,18 +188,35 @@ export class BusinessService {
     return { businesses, page: { total, take, skip } };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user?: { role: Role; sub: string }) {
     const business = await this.prisma.business.findUnique({
       where: { id },
       include: {
         owner: true,
         BusinessImage: true,
         category: true,
+        socialLinks: true,
       },
     });
 
     if (!business) {
       throw new NotFoundException('BUSSINESS_NOT_FOUND');
+    }
+
+    if (user && user.role === Role.Owner) {
+      let isFavorite: boolean = false;
+      try {
+        const favorite = await this.favoriteBusinessService.findOne(
+          user.sub,
+          business.id,
+        );
+        if (favorite) {
+          isFavorite = true;
+        }
+      } catch (err) {
+        console.log(err);
+      }
+      return { ...business, isFavorite };
     }
 
     return business;

@@ -95,12 +95,12 @@ export class UserService {
     const user = await this.prisma.user.update({
       where: { id },
       data: {
-        email: dto.email,
         name: dto.name,
         phone: dto.phone,
         role: dto.roleId ? { connect: { id: dto.roleId } } : undefined,
         // فقط وقتی پسورد جدید داریم، این فیلد رو ست کن
         ...(passwordHash && { passwordHash }),
+        ...(dto.email ? { email: dto.email } : {}),
       },
       include: {
         role: true,

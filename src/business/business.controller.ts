@@ -66,8 +66,8 @@ export class BusinessController {
     @Req() req: { user?: { role: Role; sub: string } },
   ) {
     const user = req.user;
-    const take = +query.take;
-    const skip = +query.skip;
+    const take = query.take ? +query.take : 10;
+    const skip = query.skip ? +query.skip : 0;
     const cursor = query.lastId;
 
     if (!user) {
@@ -98,12 +98,15 @@ export class BusinessController {
     return this.businessService.findAll(take, skip, cursor);
   }
 
+  @ApiBearerAuth('access-token')
+  @UseGuards(OptionalAuthGuard, RolesGuard)
   @Get(':id')
   findOne(
-    @Req() req: { user: { role: Role; sub: string } },
+    @Req() req: { user?: { role: Role; sub: string } },
     @Param('id') id: string,
   ) {
-    return this.businessService.findOne(id);
+    const user = req?.user;
+    return this.businessService.findOne(id, user);
   }
 
   @ApiBearerAuth('access-token')
