@@ -25,7 +25,7 @@ import { join } from 'path';
     BusinessModule,
     CategoriesModule,
     PrismaModule,
-    ProductsModule,
+    // ProductsModule,
     UserModule,
     RoleModule,
     AuthModule,

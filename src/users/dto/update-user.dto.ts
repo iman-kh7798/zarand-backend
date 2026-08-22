@@ -8,6 +8,10 @@ export class UpdateProfileDto {
   @IsString()
   name?: string | null;
 
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
   //   @Matches(/^(\+98|0098|0)?9\d{9}$/, {
   //     message: 'phone is not valid',
   //   })
