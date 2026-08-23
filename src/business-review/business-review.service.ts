@@ -68,22 +68,22 @@ export class BusinessReviewService {
   }
 
   async listByBusiness(businessId: string) {
-    const [agg] = await Promise.all([
+    const [agg, reviews] = await Promise.all([
       this.prisma.businessReview.aggregate({
         where: { businessId },
         _avg: { rating: true },
         _count: { _all: true },
       }),
-      // this.prisma.businessReview.findMany({
-      //   where: { businessId },
-      //   orderBy: { createdAt: 'desc' },
-      //   include: { user: { select: { id: true, name: true, phone: true } } },
-      // }),
+      this.prisma.businessReview.findMany({
+        where: { businessId },
+        orderBy: { createdAt: 'desc' },
+        include: { user: { select: { id: true, name: true, phone: true } } },
+      }),
     ]);
     return {
       average: agg._avg.rating ? Number(agg._avg.rating.toFixed(2)) : 0,
       count: agg._count._all ?? 0,
-      // reviews,
+      reviews,
     };
   }
 }
