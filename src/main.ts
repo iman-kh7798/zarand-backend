@@ -2,9 +2,14 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { WINSTON_MODULE_PROVIDER, WinstonModule } from 'nest-winston';
+import { winstonConfig } from './config/winston.config';
+import { AllExceptionsFilter } from './exception-filter/exception-filter.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: WinstonModule.createLogger(winstonConfig),
+  });
   const config = new DocumentBuilder()
     .setTitle('Zarand Backend')
     .setDescription('Zarand api description')
@@ -34,6 +39,9 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
       transform: true,
     }),
+  );
+  app.useGlobalFilters(
+    new AllExceptionsFilter(app.get(WINSTON_MODULE_PROVIDER)),
   );
   await app.listen(process.env.PORT ?? 3000);
 }

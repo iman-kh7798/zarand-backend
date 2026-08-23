@@ -12,7 +12,7 @@ import { UpdateBusinessReviewDto } from './dto/update-business-review.dto';
 export class BusinessReviewService {
   constructor(private prisma: PrismaService) {}
 
-  async create(
+  async createOrUpdate(
     businessId: string,
     userId: string,
     dto: CreateBusinessReviewDto,
@@ -28,7 +28,13 @@ export class BusinessReviewService {
     const existing = await this.prisma.businessReview.findUnique({
       where: { businessId_userId: { businessId, userId } },
     });
-    if (existing) throw new BadRequestException('REVIEW_ALREADY_EXISTS');
+    if (existing) {
+      const review = await this.prisma.businessReview.update({
+        where: { id: existing.id },
+        data: { rating: dto.rating, body: dto.body },
+      });
+      return review;
+    }
 
     const review = await this.prisma.businessReview.create({
       data: {

@@ -15,6 +15,8 @@ import { SmsModule } from './sms/sms.module';
 import { BusinessReviewModule } from './business-review/business-review.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { WinstonModule } from 'nest-winston';
+import { winstonConfig } from './config/winston.config';
 
 @Module({
   imports: [
@@ -34,6 +36,7 @@ import { join } from 'path';
     ProductImageModule,
     SmsModule,
     BusinessReviewModule,
+    WinstonModule.forRoot(winstonConfig),
     // FavoriteBusinessModule,
   ],
   controllers: [AppController],

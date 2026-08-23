@@ -195,7 +195,9 @@ export class BusinessService {
         owner: true,
         BusinessImage: true,
         category: true,
-        socialLinks: true,
+        socialLinks: {
+          select: { id: true, createdAt: true, url: true, platform: true },
+        },
       },
     });
 

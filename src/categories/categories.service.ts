@@ -204,7 +204,9 @@ export class CategoriesService {
       include: {
         products: true,
         BusinessImage: true,
-        socialLinks: true,
+        socialLinks: {
+          select: { id: true, createdAt: true, url: true, platform: true },
+        },
       },
     });
   }
@@ -223,7 +225,9 @@ export class CategoriesService {
       include: {
         products: true,
         BusinessImage: true,
-        socialLinks: true,
+        socialLinks: {
+          select: { id: true, createdAt: true, url: true, platform: true },
+        },
       },
     });
   }

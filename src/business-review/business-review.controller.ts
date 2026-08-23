@@ -33,7 +33,7 @@ export class BusinessReviewController {
     @Req() req: { user: { sub: string } },
   ) {
     const userId = req.user?.sub;
-    return this.service.create(businessId, userId, dto);
+    return this.service.createOrUpdate(businessId, userId, dto);
   }
 
   // List reviews + average and count (public)
