@@ -25,7 +25,7 @@ export class BusinessReviewController {
   // Create a review for a business (authenticated users only)
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Owner)
+  @Roles(Role.User, Role.Owner, Role.Admin)
   @Post('business/:businessId/reviews')
   async create(
     @Param('businessId') businessId: string,
@@ -45,7 +45,7 @@ export class BusinessReviewController {
   // Update a review (only owner of review)
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Owner)
+  @Roles(Role.User, Role.Owner, Role.Admin)
   @Put('reviews/:id')
   async update(
     @Param('id') id: string,
@@ -59,7 +59,7 @@ export class BusinessReviewController {
   // Delete a review (only owner of review)
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Owner)
+  @Roles(Role.User, Role.Owner, Role.Admin)
   @Delete('reviews/:id')
   async remove(@Param('id') id: string, @Req() req: { user: { sub: string } }) {
     const userId = req.user?.sub;

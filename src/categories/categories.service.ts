@@ -12,12 +12,14 @@ import {
   UpdateCategoryDto,
 } from './categories.dto';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
+import { BusinessReviewService } from 'src/business-review/business-review.service';
 
 @Injectable()
 export class CategoriesService {
   constructor(
     private prisma: PrismaService,
     private uploadService: UploadService,
+    private businessReviewService: BusinessReviewService,
   ) {}
 
   async create(dto: CreateCategoryDto, coverImageUrl?: string) {
@@ -48,13 +50,27 @@ export class CategoriesService {
   }
 
   async findAll() {
-    return await this.prisma.category.findMany({
+    const categories = await this.prisma.category.findMany({
       include: {
         children: true,
         parent: true,
         businesses: true,
       },
     });
+
+    // آمار نظرات همه‌ی کسب‌وکارهای همه‌ی دسته‌ها را با یک کوئری می‌گیریم
+    const stats = await this.businessReviewService.getStatsFor(
+      categories.flatMap((category) => category.businesses.map((b) => b.id)),
+    );
+
+    return categories.map((category) => ({
+      ...category,
+      businesses: category.businesses.map((business) => ({
+        ...business,
+        reviewsAverage: stats.get(business.id)?.average ?? 0,
+        reviewsCount: stats.get(business.id)?.count ?? 0,
+      })),
+    }));
   }
 
   async findOne(id: string) {
@@ -90,7 +106,12 @@ export class CategoriesService {
       throw new NotFoundException('CATEGORY_NOT_FOUND');
     }
 
-    return category;
+    return {
+      ...category,
+      businesses: await this.businessReviewService.withStats(
+        category.businesses,
+      ),
+    };
   }
 
   async update(id: string, dto: UpdateCategoryDto, coverImageUrl?: string) {
@@ -196,7 +217,7 @@ export class CategoriesService {
   async getBusinessesByCategory(categoryId: string, query: PaginationDto) {
     await this.findOne(categoryId);
 
-    return await this.prisma.business.findMany({
+    const businesses = await this.prisma.business.findMany({
       where: { categoryId },
       take: query.take,
       skip: query.skip,
@@ -209,6 +230,8 @@ export class CategoriesService {
         },
       },
     });
+
+    return this.businessReviewService.withStats(businesses);
   }
 
   async getActiveBusinessesByCategory(
@@ -217,7 +240,7 @@ export class CategoriesService {
   ) {
     await this.findOne(categoryId);
 
-    return await this.prisma.business.findMany({
+    const businesses = await this.prisma.business.findMany({
       where: { categoryId, status: 'APPROVED' },
       take: query.take,
       skip: query.skip,
@@ -230,6 +253,8 @@ export class CategoriesService {
         },
       },
     });
+
+    return this.businessReviewService.withStats(businesses);
   }
 
   async getCategoryByBusiness(businessId: string) {

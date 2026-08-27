@@ -13,7 +13,7 @@ import { RoleModule } from 'src/role/role.module';
     JwtModule.register({
       global: true,
       secret: jwtConstants.secret,
-      signOptions: { expiresIn: '3600s' },
+      signOptions: { expiresIn: jwtConstants.expiresIn },
     }),
     RoleModule,
   ],

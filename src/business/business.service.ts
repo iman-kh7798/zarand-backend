@@ -20,6 +20,7 @@ import { UploadService } from 'src/upload/upload.service';
 import { BusinessStatus, Prisma } from '@prisma/client';
 import { Role } from 'src/role/role.enum';
 import { FavoriteBusinessService } from 'src/favorite-business/favorite-business.service';
+import { BusinessReviewService } from 'src/business-review/business-review.service';
 
 @Injectable()
 export class BusinessService {
@@ -29,6 +30,7 @@ export class BusinessService {
     private favoriteBusinessService: FavoriteBusinessService,
     private categoryService: CategoriesService,
     private uploadService: UploadService,
+    private businessReviewService: BusinessReviewService,
   ) {}
 
   async create(
@@ -101,10 +103,20 @@ export class BusinessService {
     return images;
   }
 
-  async findAll(take: number, skip: number, lastId: string | undefined) {
-    const [total, businesses] = await Promise.all([
-      this.prisma.business.count(),
+  /**
+   * لیست صفحه‌بندی‌شده‌ی کسب‌وکارها به همراه میانگین و تعداد نظرات هر کدام.
+   * همه‌ی متدهای findAll/findByStatus/findPerOwner از این استفاده می‌کنند.
+   */
+  private async listBusinesses(
+    where: Prisma.BusinessWhereInput | undefined,
+    take: number,
+    skip: number,
+    lastId: string | undefined,
+  ) {
+    const [total, rows] = await Promise.all([
+      this.prisma.business.count({ where }),
       this.prisma.business.findMany({
+        where,
         take,
         skip,
         ...(lastId ? { cursor: { id: lastId } } : {}),
@@ -115,7 +127,12 @@ export class BusinessService {
         },
       }),
     ]);
+    const businesses = await this.businessReviewService.withStats(rows);
     return { businesses, page: { total, take, skip } };
+  }
+
+  async findAll(take: number, skip: number, lastId: string | undefined) {
+    return this.listBusinesses(undefined, take, skip, lastId);
   }
 
   async findPerOwner(
@@ -124,21 +141,7 @@ export class BusinessService {
     skip: number,
     lastId: string | undefined,
   ) {
-    const [total, businesses] = await Promise.all([
-      this.prisma.business.count({ where: { ownerId: id } }),
-      this.prisma.business.findMany({
-        where: { ownerId: id },
-        take,
-        skip,
-        ...(lastId ? { cursor: { id: lastId } } : {}),
-        include: {
-          owner: true,
-          BusinessImage: true,
-          category: true,
-        },
-      }),
-    ]);
-    return { businesses, page: { total, take, skip } };
+    return this.listBusinesses({ ownerId: id }, take, skip, lastId);
   }
 
   async findByStatus(
@@ -147,21 +150,7 @@ export class BusinessService {
     skip: number,
     lastId: string | undefined,
   ) {
-    const [total, businesses] = await Promise.all([
-      this.prisma.business.count({ where: { status } }),
-      this.prisma.business.findMany({
-        where: { status },
-        take,
-        skip,
-        ...(lastId ? { cursor: { id: lastId } } : {}),
-        include: {
-          owner: true,
-          BusinessImage: true,
-          category: true,
-        },
-      }),
-    ]);
-    return { businesses, page: { total, take, skip } };
+    return this.listBusinesses({ status }, take, skip, lastId);
   }
 
   async findPerOwnerByStatus(
@@ -171,21 +160,7 @@ export class BusinessService {
     skip: number,
     lastId: string | undefined,
   ) {
-    const [total, businesses] = await Promise.all([
-      this.prisma.business.count({ where: { ownerId, status } }),
-      this.prisma.business.findMany({
-        where: { ownerId, status },
-        take,
-        skip,
-        ...(lastId ? { cursor: { id: lastId } } : {}),
-        include: {
-          owner: true,
-          BusinessImage: true,
-          category: true,
-        },
-      }),
-    ]);
-    return { businesses, page: { total, take, skip } };
+    return this.listBusinesses({ ownerId, status }, take, skip, lastId);
   }
 
   async findOne(id: string, user?: { role: Role; sub: string }) {
@@ -428,6 +403,8 @@ export class BusinessService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return favorites.map((f) => f.business);
+    return this.businessReviewService.withStats(
+      favorites.map((f) => f.business),
+    );
   }
 }

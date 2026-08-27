@@ -73,6 +73,43 @@ export class BusinessReviewService {
     return { success: true };
   }
 
+  /**
+   * میانگین و تعداد نظرات را برای چند کسب‌وکار با یک کوئری می‌گیرد.
+   * خروجی: Map از businessId به { average, count }
+   */
+  async getStatsFor(businessIds: string[]) {
+    const stats = new Map<string, { average: number; count: number }>();
+    if (!businessIds.length) return stats;
+
+    const grouped = await this.prisma.businessReview.groupBy({
+      by: ['businessId'],
+      where: { businessId: { in: businessIds } },
+      _avg: { rating: true },
+      _count: { _all: true },
+    });
+
+    for (const row of grouped) {
+      stats.set(row.businessId, {
+        average: row._avg.rating ? Number(row._avg.rating.toFixed(2)) : 0,
+        count: row._count._all,
+      });
+    }
+    return stats;
+  }
+
+  /**
+   * به هر کسب‌وکار در لیست، `reviewsAverage` و `reviewsCount` اضافه می‌کند.
+   * کسب‌وکار بدون نظر مقدار صفر می‌گیرد.
+   */
+  async withStats<T extends { id: string }>(businesses: T[]) {
+    const stats = await this.getStatsFor(businesses.map((b) => b.id));
+    return businesses.map((business) => ({
+      ...business,
+      reviewsAverage: stats.get(business.id)?.average ?? 0,
+      reviewsCount: stats.get(business.id)?.count ?? 0,
+    }));
+  }
+
   async listByBusiness(businessId: string) {
     const [agg, reviews] = await Promise.all([
       this.prisma.businessReview.aggregate({
