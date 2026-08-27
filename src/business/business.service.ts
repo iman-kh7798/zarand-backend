@@ -38,6 +38,14 @@ export class BusinessService {
     userId: string,
     uploads: { filename: string; path: string }[] = [],
   ) {
+    // هر کاربر فقط اجازه‌ی ثبت یک کسب‌وکار دارد
+    const existingBusiness = await this.prisma.business.count({
+      where: { ownerId: userId },
+    });
+    if (existingBusiness > 0) {
+      this.uploadService.removeMany(uploads.map((upload) => upload.path));
+      throw new BadRequestException('BUSINESS_LIMIT_EXCEEDED');
+    }
     try {
       const business = await this.prisma.business.create({
         data: {
