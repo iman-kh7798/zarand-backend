@@ -22,6 +22,15 @@ import { Role } from 'src/role/role.enum';
 import { FavoriteBusinessService } from 'src/favorite-business/favorite-business.service';
 import { BusinessReviewService } from 'src/business-review/business-review.service';
 
+export interface BusinessListFilters {
+  title?: string;
+  status?: BusinessStatus;
+  isActive?: boolean;
+  ownerName?: string;
+  categoryId?: string;
+  categoryName?: string;
+}
+
 @Injectable()
 export class BusinessService {
   constructor(
@@ -113,7 +122,7 @@ export class BusinessService {
 
   /**
    * لیست صفحه‌بندی‌شده‌ی کسب‌وکارها به همراه میانگین و تعداد نظرات هر کدام.
-   * همه‌ی متدهای findAll/findByStatus/findPerOwner از این استفاده می‌کنند.
+   * تنها نقطه‌ی اجرای کوئری لیست؛ `findBusinesses` فقط `where` را می‌سازد.
    */
   private async listBusinesses(
     where: Prisma.BusinessWhereInput | undefined,
@@ -139,36 +148,74 @@ export class BusinessService {
     return { businesses, page: { total, take, skip } };
   }
 
-  async findAll(take: number, skip: number, lastId: string | undefined) {
-    return this.listBusinesses(undefined, take, skip, lastId);
+  /**
+   * ساخت شرط‌های فیلتر لیست کسب‌وکارها بر اساس نقش درخواست‌دهنده.
+   *
+   * قواعد دسترسی:
+   * - ADMIN: همه‌ی کسب‌وکارها؛ فیلترهای `status` و `isActive` اعمال می‌شوند.
+   * - OWNER: فقط کسب‌وکارهای خودش؛ `status`/`isActive` نادیده گرفته می‌شود.
+   * - ناشناس (یا هر نقش دیگر): فقط `status: APPROVED` و `isActive: true`؛
+   *   `status`/`isActive` ورودی نادیده گرفته می‌شود.
+   *
+   * توجه: کانکتور MySQL در Prisma از `mode: 'insensitive'` پشتیبانی نمی‌کند؛
+   * کولیشن پیش‌فرض MySQL/MariaDB خودش case-insensitive است.
+   */
+  private buildListWhere(
+    filters: BusinessListFilters,
+    user?: { role: Role; sub: string },
+  ): Prisma.BusinessWhereInput {
+    const where: Prisma.BusinessWhereInput = {};
+    const isAdmin = user?.role === Role.Admin;
+
+    if (isAdmin) {
+      // فیلترهای مدیریتی فقط برای ادمین
+      if (filters.status) where.status = filters.status;
+      if (filters.isActive !== undefined) where.isActive = filters.isActive;
+    } else if (user?.role === Role.Owner) {
+      // مالک فقط کسب‌وکارهای خودش را می‌بیند (همه‌ی وضعیت‌ها)
+      where.ownerId = user.sub;
+    } else {
+      // عمومی / ناشناس
+      where.status = BusinessStatus.APPROVED;
+      where.isActive = true;
+    }
+
+    if (filters.title) {
+      where.title = { contains: filters.title };
+    }
+
+    if (filters.ownerName) {
+      where.owner = { name: { contains: filters.ownerName } };
+    }
+
+    if (filters.categoryId) {
+      where.categoryId = filters.categoryId;
+    }
+
+    if (filters.categoryName) {
+      where.category = { name: { contains: filters.categoryName } };
+    }
+
+    return where;
   }
 
-  async findPerOwner(
-    id: string,
+  /**
+   * لیست کسب‌وکارها با فیلتر و صفحه‌بندی.
+   * جایگزین findAll/findByStatus/findPerOwner/findPerOwnerByStatus شده است.
+   */
+  async findBusinesses(
+    filters: BusinessListFilters,
     take: number,
     skip: number,
     lastId: string | undefined,
+    user?: { role: Role; sub: string },
   ) {
-    return this.listBusinesses({ ownerId: id }, take, skip, lastId);
-  }
-
-  async findByStatus(
-    status: BusinessStatus,
-    take: number,
-    skip: number,
-    lastId: string | undefined,
-  ) {
-    return this.listBusinesses({ status }, take, skip, lastId);
-  }
-
-  async findPerOwnerByStatus(
-    ownerId: string,
-    status: BusinessStatus,
-    take: number,
-    skip: number,
-    lastId: string | undefined,
-  ) {
-    return this.listBusinesses({ ownerId, status }, take, skip, lastId);
+    return this.listBusinesses(
+      this.buildListWhere(filters, user),
+      take,
+      skip,
+      lastId,
+    );
   }
 
   async findOne(id: string, user?: { role: Role; sub: string }) {

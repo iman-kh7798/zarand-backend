@@ -21,7 +21,7 @@ import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { BusinessService } from './business.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import {
-  FindByStatusQueryDto,
+  FindBusinessQueryDto,
   UpdateBusinessDto,
   UpdateBusinessStatusDto,
 } from './dto/update-business.dto';
@@ -62,40 +62,27 @@ export class BusinessController {
   @UseGuards(OptionalAuthGuard, RolesGuard)
   @Get()
   findAll(
-    @Query() query: FindByStatusQueryDto,
+    @Query() query: FindBusinessQueryDto,
     @Req() req: { user?: { role: Role; sub: string } },
   ) {
-    const user = req.user;
     const take = query.take ? +query.take : 10;
     const skip = query.skip ? +query.skip : 0;
     const cursor = query.lastId;
 
-    if (!user) {
-      return this.businessService.findByStatus('APPROVED', take, skip, cursor);
-    }
-
-    if (query.status) {
-      if (user.role === Role.Owner) {
-        return this.businessService.findPerOwnerByStatus(
-          user.sub,
-          query.status,
-          take,
-          skip,
-          cursor,
-        );
-      }
-      return this.businessService.findByStatus(
-        query.status,
-        take,
-        skip,
-        cursor,
-      );
-    }
-
-    if (user && user.role === Role.Owner) {
-      return this.businessService.findPerOwner(user.sub, take, skip, cursor);
-    }
-    return this.businessService.findAll(take, skip, cursor);
+    return this.businessService.findBusinesses(
+      {
+        title: query.title,
+        status: query.status,
+        isActive: query.isActive,
+        ownerName: query.ownerName,
+        categoryId: query.categoryId,
+        categoryName: query.categoryName,
+      },
+      take,
+      skip,
+      cursor,
+      req.user,
+    );
   }
 
   @ApiBearerAuth('access-token')
