@@ -34,14 +34,14 @@ export class UserController {
     return this.userService.findAll();
   }
 
-  @Roles(Role.Admin, Role.Owner, Role.User)
+  @Roles(Role.Admin, Role.Owner)
   @Get('profile')
   async getProfile(@Request() req: { user: { sub: string } }) {
     const user = await this.userService.findOne(req.user.sub);
     return user;
   }
 
-  @Roles(Role.Admin, Role.Owner, Role.User)
+  @Roles(Role.Admin, Role.Owner)
   @Post('profile')
   async updateProfile(
     @Request() req: { user: { sub: string } },

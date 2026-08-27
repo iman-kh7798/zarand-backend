@@ -1,12 +1,17 @@
 import {
-  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { Role } from 'src/role/role.enum';
 import { CreateBusinessReviewDto } from './dto/create-business-review.dto';
 import { UpdateBusinessReviewDto } from './dto/update-business-review.dto';
+import { ListBusinessReviewsDto } from './dto/list-business-reviews.dto';
+
+/** اطلاعات کاربری که درخواست را زده — از payload توکن می‌آید */
+type Actor = { sub: string; role: Role };
 
 @Injectable()
 export class BusinessReviewService {
@@ -29,9 +34,15 @@ export class BusinessReviewService {
       where: { businessId_userId: { businessId, userId } },
     });
     if (existing) {
+      // ویرایش نظر، آن را دوباره به حالت در انتظار تایید برمی‌گرداند
       const review = await this.prisma.businessReview.update({
         where: { id: existing.id },
-        data: { rating: dto.rating, body: dto.body },
+        data: {
+          rating: dto.rating,
+          body: dto.body,
+          isApproved: false,
+          approvedAt: null,
+        },
       });
       return review;
     }
@@ -58,6 +69,9 @@ export class BusinessReviewService {
       data: {
         rating: dto.rating ?? review.rating,
         body: dto.body ?? review.body,
+        // هر ویرایشی نیاز به تایید مجدد دارد
+        isApproved: false,
+        approvedAt: null,
       },
     });
     return updated;
@@ -74,7 +88,82 @@ export class BusinessReviewService {
   }
 
   /**
+   * تایید یا رد کردن یک نظر.
+   * ادمین به همه‌ی نظرها دسترسی دارد، مالک فقط به نظرهای کسب‌وکار خودش.
+   */
+  async setApproval(id: string, isApproved: boolean, actor: Actor) {
+    const review = await this.prisma.businessReview.findUnique({
+      where: { id },
+      include: { business: { select: { ownerId: true } } },
+    });
+    if (!review) throw new NotFoundException('REVIEW_NOT_FOUND');
+
+    if (actor.role !== Role.Admin && review.business.ownerId !== actor.sub) {
+      throw new ForbiddenException('NOT_YOUR_BUSINESS_REVIEW');
+    }
+
+    return await this.prisma.businessReview.update({
+      where: { id },
+      data: {
+        isApproved,
+        approvedAt: isApproved ? new Date() : null,
+      },
+      include: {
+        user: { select: { id: true, name: true, phone: true } },
+        business: { select: { id: true, title: true } },
+      },
+    });
+  }
+
+  /**
+   * لیست نظرها برای پنل مدیریت.
+   * ادمین نظرهای همه‌ی کسب‌وکارها را می‌بیند، مالک فقط نظرهای کسب‌وکارهای خودش را.
+   * قابل فیلتر بر اساس کسب‌وکار (`businessId`)، جست‌وجو روی عنوان کسب‌وکار (`search`)
+   * و وضعیت تایید (`isApproved`).
+   */
+  async listForModeration(actor: Actor, query: ListBusinessReviewsDto) {
+    const take = query.take ? +query.take : 10;
+    const skip = query.skip ? +query.skip : 0;
+
+    const businessFilter: Prisma.BusinessWhereInput = {};
+    if (actor.role !== Role.Admin) {
+      businessFilter.ownerId = actor.sub;
+    }
+    if (query.search) {
+      businessFilter.title = { contains: query.search };
+    }
+
+    const where: Prisma.BusinessReviewWhereInput = {
+      ...(query.businessId ? { businessId: query.businessId } : {}),
+      ...(query.isApproved !== undefined
+        ? { isApproved: query.isApproved === 'true' }
+        : {}),
+      ...(Object.keys(businessFilter).length
+        ? { business: businessFilter }
+        : {}),
+    };
+
+    const [total, reviews] = await Promise.all([
+      this.prisma.businessReview.count({ where }),
+      this.prisma.businessReview.findMany({
+        where,
+        take,
+        skip,
+        ...(query.lastId ? { cursor: { id: query.lastId } } : {}),
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, name: true, phone: true } },
+          business: { select: { id: true, title: true, ownerId: true } },
+        },
+      }),
+    ]);
+
+    return { reviews, page: { total, take, skip } };
+  }
+
+  /**
    * میانگین و تعداد نظرات را برای چند کسب‌وکار با یک کوئری می‌گیرد.
+   * فقط نظرهای تاییدشده حساب می‌شوند.
    * خروجی: Map از businessId به { average, count }
    */
   async getStatsFor(businessIds: string[]) {
@@ -83,7 +172,7 @@ export class BusinessReviewService {
 
     const grouped = await this.prisma.businessReview.groupBy({
       by: ['businessId'],
-      where: { businessId: { in: businessIds } },
+      where: { businessId: { in: businessIds }, isApproved: true },
       _avg: { rating: true },
       _count: { _all: true },
     });
@@ -99,7 +188,7 @@ export class BusinessReviewService {
 
   /**
    * به هر کسب‌وکار در لیست، `reviewsAverage` و `reviewsCount` اضافه می‌کند.
-   * کسب‌وکار بدون نظر مقدار صفر می‌گیرد.
+   * کسب‌وکار بدون نظرِ تاییدشده مقدار صفر می‌گیرد.
    */
   async withStats<T extends { id: string }>(businesses: T[]) {
     const stats = await this.getStatsFor(businesses.map((b) => b.id));
@@ -110,15 +199,25 @@ export class BusinessReviewService {
     }));
   }
 
-  async listByBusiness(businessId: string) {
+  /**
+   * لیست عمومی نظرهای یک کسب‌وکار.
+   * فقط نظرهای تاییدشده برگردانده می‌شود؛ اگر کاربر لاگین کرده باشد نظر خودش را
+   * حتی در حالت در انتظار تایید هم می‌بیند (وگرنه فکر می‌کند ثبت نشده).
+   * `average` و `count` همیشه فقط از روی نظرهای تاییدشده حساب می‌شوند.
+   */
+  async listByBusiness(businessId: string, viewerId?: string) {
+    const where: Prisma.BusinessReviewWhereInput = viewerId
+      ? { businessId, OR: [{ isApproved: true }, { userId: viewerId }] }
+      : { businessId, isApproved: true };
+
     const [agg, reviews] = await Promise.all([
       this.prisma.businessReview.aggregate({
-        where: { businessId },
+        where: { businessId, isApproved: true },
         _avg: { rating: true },
         _count: { _all: true },
       }),
       this.prisma.businessReview.findMany({
-        where: { businessId },
+        where,
         orderBy: { createdAt: 'desc' },
         include: { user: { select: { id: true, name: true, phone: true } } },
       }),

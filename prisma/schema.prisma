@@ -272,18 +272,22 @@ model Review {
 
 /// نظرات کسب‌وکار
 model BusinessReview {
-  id         String   @id @default(uuid()) @db.Char(36)
+  id         String    @id @default(uuid()) @db.Char(36)
   rating     Int
   body       String?
-  createdAt  DateTime @default(now())
-  businessId String   @db.Char(36)
-  userId     String   @db.Char(36)
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id])
+  isApproved Boolean   @default(false)
+  approvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  businessId String    @db.Char(36)
+  userId     String    @db.Char(36)
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id])
 
   @@unique([businessId, userId])
   @@index([businessId])
   @@index([userId])
+  @@index([businessId, isApproved])
+  @@index([isApproved, createdAt])
 }
 
 /// رزرو موجودی

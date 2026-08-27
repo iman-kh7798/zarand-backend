@@ -34,11 +34,11 @@ src/
   main.ts            bootstrap: Swagger + ValidationPipe سراسری + AllExceptionsFilter
   app.module.ts      رجیستر ماژول‌ها (⚠️ ProductsModule و FavoriteBusinessModule کامنت‌اند)
   auth/              OTP + JWT، AuthGuard، OptionalAuthGuard، constants (secret)
-  role/              Role enum، Roles decorator، RolesGuard، role controller/service
+  role/              Role enum (ADMIN | OWNER)، Roles decorator، RolesGuard، role controller/service
   users/             CRUD کاربر + OTP (saveVerificationCode/findValidOtp/expireValidOtp)
   business/          هسته‌ی پروژه — بزرگ‌ترین سرویس (~433 خط)
   business-image/    تصاویر کسب‌وکار
-  business-review/   امتیاز و نظر کسب‌وکار (روت‌ها: business/:id/reviews و reviews/:id)
+  business-review/   امتیاز و نظر کسب‌وکار + جریان تایید (business/:id/reviews و reviews/*)
   categories/        دسته‌بندی درختی + اتصال به business
   favorite-business/ علاقه‌مندی‌ها (ماژولش در app.module فعال نیست؛ سرویسش مستقیم استفاده می‌شود)
   products/, product-image/  کد موجود ولی ماژولش رجیستر نشده → این روت‌ها فعال نیستند
@@ -55,6 +55,8 @@ src/
 **۱. الگوی ماژول:** هر فیچر = `x.module.ts` + `x.controller.ts` + `x.service.ts` + `dto/create-x.dto.ts` + `dto/update-x.dto.ts` (با `PartialType` از `@nestjs/mapped-types`). سرویس‌ها `PrismaService` را مستقیم تزریق می‌کنند؛ لایه‌ی repository جدا وجود ندارد.
 
 **۲. ایمپورت‌ها:** مسیر مطلق با پیشوند `src/` (مثل `import { AuthGuard } from 'src/auth/auth.guard'`)، نه alias مثل `@/`.
+
+**۰. نقش‌ها فقط دو تاست: `ADMIN` و `OWNER`.** نقش `USER` کاملاً حذف شده — نه در enum هست، نه در seed، نه در دیتابیس. هر کسی ثبت‌نام کند `OWNER` می‌شود (`roleId: 2` در `auth.service.ts`). هیچ‌وقت `Role.User` را برنگردان.
 
 **۳. گاردها — مهم:** `RolesGuard` خودش توکن را چک نمی‌کند، فقط `request.user.role` را با متادیتای `Roles()` مقایسه می‌کند. پس همیشه:
 
@@ -91,9 +93,11 @@ payload توکن: `{ sub, phone, role, name }`.
 
 **۹. صفحه‌بندی:** `take`/`skip` + `lastId` به‌عنوان cursor؛ پاسخ به شکل `{ items, page: { total, take, skip } }`.
 
-**۱۰. آمار نظرات در لیست کسب‌وکارها:** هر جا لیستی از business برگردانده می‌شود باید `reviewsAverage` و `reviewsCount` هم داشته باشد. برای این کار از `BusinessReviewService.withStats(rows)` استفاده کن (یا `getStatsFor(ids)` اگر ساختار تودرتو است) — با یک `groupBy` برای کل لیست کار می‌کند، پس داخل `map` صدایش نزن. اگر لیست جدیدی اضافه کردی، همین کار را برایش انجام بده.
+**۱۰. جریان تایید نظرها:** `BusinessReview.isApproved` پیش‌فرض `false` است. نظر جدید — و هر **ویرایش** نظر — به حالت در انتظار تایید برمی‌گردد (`isApproved: false`, `approvedAt: null`). فقط `OWNER` کسب‌وکار مربوطه و `ADMIN` می‌توانند تایید کنند. هر کوئری‌ای که آمار یا لیست عمومی نظر می‌دهد **باید** `isApproved: true` را فیلتر کند.
 
-**۱۱. هرگز `passwordHash` را برنگردان** — در `users.service` با destructuring حذف می‌شود.
+**۱۱. آمار نظرات در لیست کسب‌وکارها:** هر جا لیستی از business برگردانده می‌شود باید `reviewsAverage` و `reviewsCount` هم داشته باشد. برای این کار از `BusinessReviewService.withStats(rows)` استفاده کن (یا `getStatsFor(ids)` اگر ساختار تودرتو است) — با یک `groupBy` برای کل لیست کار می‌کند، پس داخل `map` صدایش نزن. اگر لیست جدیدی اضافه کردی، همین کار را برایش انجام بده.
+
+**۱۲. هرگز `passwordHash` را برنگردان** — در `users.service` با destructuring حذف می‌شود.
 
 ## دیتابیس / Prisma
 
@@ -103,7 +107,11 @@ payload توکن: `{ sub, phone, role, name }`.
   - سفارش/سبد خرید (`Order`, `OrderItem`, `StockReservation`) در اسکیما هست ولی **هیچ ماژول/روتی برایش وجود ندارد**.
 - کلیدها: `String @db.Char(36)` با `uuid()`؛ `Role.id` عدد صحیح است (۱=ADMIN، ۲=OWNER، ۳=USER طبق `seed.ts`).
 - `Business.status`: `PENDING | APPROVED | REJECTED`. کاربر ناشناس فقط `APPROVED` می‌بیند.
-- بعد از تغییر اسکیما: `npx prisma migrate dev --name ...` سپس `npm run generate`. فقط یک مایگریشن (`0_init`) موجود است.
+- بعد از تغییر اسکیما: `npx prisma migrate dev --name ...` سپس `npm run generate`.
+- مایگریشن‌ها: `0_init` و `20260827120000_review_approval_and_remove_user_role`.
+- ⚠️ دیتابیس از محیط توسعه‌ی من در دسترس نیست، پس `migrate dev` قابل اجرا نیست. برای ساخت مایگریشن جدید بدون دیتابیس:
+  `npx prisma migrate diff --from-schema <اسکیمای-قبلی> --to-schema prisma/schema.prisma --script`
+  (در Prisma 7 فلگ‌ها `--from-schema`/`--to-schema` هستند، نه `--from-schema-datamodel`.)
 
 ## نقشه‌ی روت‌ها (خلاصه)
 
@@ -116,7 +124,11 @@ payload توکن: `{ sub, phone, role, name }`.
 | `business/:id/status` | PATCH | ADMIN |
 | `business/:id/upload-images`, `:businessId/image/:imageId` | POST/PATCH/DELETE | OWNER |
 | `business/:id/favorite`, `business/favorites/me` | POST/DELETE/GET | لاگین |
-| `business/:businessId/reviews`, `reviews/:id` | POST/GET/PUT/DELETE | لاگین (GET عمومی؛ ویرایش/حذف فقط صاحب نظر) |
+| `business/:businessId/reviews` | POST | لاگین |
+| `business/:businessId/reviews` | GET | عمومی — فقط تاییدشده‌ها (+ نظر خود کاربر لاگین‌کرده) |
+| `reviews` | GET | OWNER (فقط کسب‌وکار خودش) / ADMIN (همه) — لیست مدیریت |
+| `reviews/:id/status` | PATCH | OWNER (کسب‌وکار خودش) / ADMIN — تایید یا رد |
+| `reviews/:id` | PUT / DELETE | فقط صاحب همان نظر |
 | `categories`, `categories/:id`, `categories/slug/:slug`, `categories/:id/businesses` | GET | عمومی |
 | `categories` (POST/PATCH/DELETE), `categories/business/set` | — | ADMIN (ست‌کردن دسته: ADMIN+OWNER) |
 | `users` CRUD | — | ADMIN؛ `users/profile` (GET/POST) برای همه‌ی لاگین‌شده‌ها |
@@ -158,4 +170,6 @@ secret و انقضای توکن از env می‌آیند (`JWT_SECRET` اجبا�
 - `DATABASE_HOST`/`DATABASE_PORT` به env و به هر دو مسیر اتصال اضافه شد.
 - دسترسی ثبت/ویرایش نظر در `business-review` به `User, Owner, Admin` باز شد (مالکیت همچنان در سرویس چک می‌شود).
 - `PROJECT_DOCUMENTATION.md` بازنویسی شد.
+- نقش `USER` کاملاً حذف شد (enum، همه‌ی `@Roles`، seed و دیتابیس از طریق مایگریشن).
+- جریان تایید نظرها اضافه شد: `isApproved`/`approvedAt` روی `BusinessReview`، لیست مدیریت `GET /reviews` و `PATCH /reviews/:id/status`.
 - `reviewsAverage` / `reviewsCount` به همه‌ی لیست‌های business اضافه شد (`BusinessService.listBusinesses`, `getFavorites` و لیست‌های `CategoriesService`). چهار متد `findAll/findByStatus/findPerOwner/findPerOwnerByStatus` روی هلپر خصوصی `listBusinesses` یکی شدند.

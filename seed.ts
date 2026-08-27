@@ -18,7 +18,6 @@ async function rolesSeed() {
   const roles = [
     { name: 'ADMIN', description: 'System administrator' },
     { name: 'OWNER', description: 'Business owner' },
-    { name: 'USER', description: 'Customer / buyer' },
   ];
 
   for (const role of roles) {

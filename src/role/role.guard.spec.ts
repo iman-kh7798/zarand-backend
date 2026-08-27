@@ -24,7 +24,7 @@ describe('RolesGuard', () => {
   it('allows access when the route has no @Roles metadata', () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(undefined);
 
-    const result = guard.canActivate(createContext({ role: Role.User }));
+    const result = guard.canActivate(createContext({ role: Role.Owner }));
 
     expect(result).toBe(true);
   });
@@ -32,7 +32,7 @@ describe('RolesGuard', () => {
   it('allows access when the route has an empty roles array', () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([]);
 
-    const result = guard.canActivate(createContext({ role: Role.User }));
+    const result = guard.canActivate(createContext({ role: Role.Owner }));
 
     expect(result).toBe(true);
   });
@@ -50,7 +50,7 @@ describe('RolesGuard', () => {
   it('denies access when the user role is not in the required roles', () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([Role.Admin]);
 
-    const result = guard.canActivate(createContext({ role: Role.User }));
+    const result = guard.canActivate(createContext({ role: Role.Owner }));
 
     expect(result).toBe(false);
   });

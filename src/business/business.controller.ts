@@ -211,7 +211,7 @@ export class BusinessController {
 
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard)
-  @Roles(Role.Owner, Role.User)
+  @Roles(Role.Owner)
   @Get('favorites/me')
   getFavorites(@Req() req: { user: { sub: string } }) {
     return this.businessService.getFavorites(req.user.sub);
@@ -219,7 +219,7 @@ export class BusinessController {
 
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard)
-  @Roles(Role.Owner, Role.User)
+  @Roles(Role.Owner)
   @Post(':id/favorite')
   addFavorite(@Req() req: { user: { sub: string } }, @Param('id') id: string) {
     return this.businessService.addFavorite(id, req.user.sub);
@@ -227,7 +227,7 @@ export class BusinessController {
 
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard)
-  @Roles(Role.Owner, Role.User)
+  @Roles(Role.Owner)
   @Delete(':id/favorite')
   removeFavorite(
     @Req() req: { user: { sub: string } },

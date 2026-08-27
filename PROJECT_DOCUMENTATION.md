@@ -91,7 +91,8 @@ seed.ts                  داده‌ی اولیه
 
 ## نقش‌ها و دسترسی
 
-سه نقش در جدول `Role` وجود دارد: `ADMIN` (id=1)، `OWNER` (id=2)، `USER` (id=3).
+دو نقش در جدول `Role` وجود دارد: `ADMIN` (id=1) و `OWNER` (id=2).
+هر کاربری که ثبت‌نام کند `OWNER` می‌شود.
 
 - `AuthGuard` توکن را بررسی می‌کند و payload را در `req.user` می‌گذارد.
 - `RolesGuard` فقط نقش را با `@Roles(...)` تطبیق می‌دهد؛ **باید همراه `AuthGuard` استفاده شود**.
@@ -117,7 +118,10 @@ seed.ts                  داده‌ی اولیه
 | `/business/:businessId/image/:imageId` | PATCH / DELETE | OWNER |
 | `/business/:id/favorite` | POST / DELETE | کاربر لاگین‌شده |
 | `/business/favorites/me` | GET | کاربر لاگین‌شده |
-| `/business/:businessId/reviews` | GET / POST | عمومی / کاربر لاگین‌شده |
+| `/business/:businessId/reviews` | POST | کاربر لاگین‌شده (نظر در انتظار تایید ثبت می‌شود) |
+| `/business/:businessId/reviews` | GET | عمومی — فقط نظرهای تاییدشده |
+| `/reviews` | GET | OWNER (نظرهای کسب‌وکارهای خودش) / ADMIN (همه) |
+| `/reviews/:id/status` | PATCH | OWNER (کسب‌وکار خودش) / ADMIN |
 | `/reviews/:id` | PUT / DELETE | صاحب همان نظر |
 | `/categories`, `/categories/:id`, `/categories/slug/:slug`, `/categories/:id/businesses` | GET | عمومی |
 | `/categories` | POST / PATCH / DELETE | ADMIN |
@@ -139,11 +143,38 @@ seed.ts                  داده‌ی اولیه
   `reviewsAverage` (میانگین امتیاز با دو رقم اعشار، صفر اگر نظری نباشد) و `reviewsCount` (تعداد نظرات).
 - آپلود تصویر: حداکثر ۵ مگابایت، فرمت‌های `jpeg/jpg/png`، حداکثر ۱۰ تصویر برای هر کسب‌وکار.
 
+## جریان تایید نظرها
+
+هر نظری که ثبت می‌شود در حالت **در انتظار تایید** (`isApproved = false`) قرار می‌گیرد و تا وقتی تایید نشود عمومی نمایش داده نمی‌شود:
+
+- `GET /business/:businessId/reviews` فقط نظرهای تاییدشده را برمی‌گرداند. اگر درخواست‌دهنده لاگین کرده باشد، نظر خودش را حتی در حالت در انتظار تایید هم می‌بیند. `average` و `count` همیشه فقط از روی نظرهای تاییدشده حساب می‌شوند.
+- `reviewsAverage` و `reviewsCount` در لیست کسب‌وکارها هم فقط نظرهای تاییدشده را می‌شمارند.
+- **ویرایش یک نظر آن را دوباره به حالت در انتظار تایید برمی‌گرداند.**
+
+### لیست مدیریت نظرها
+
+`GET /reviews` — مالک کسب‌وکار فقط نظرهای کسب‌وکارهای خودش را می‌بیند، ادمین نظرهای همه را.
+
+| پارامتر | توضیح |
+|---|---|
+| `take` / `skip` / `lastId` | صفحه‌بندی (پیش‌فرض ۱۰ و ۰) |
+| `businessId` | فیلتر روی یک کسب‌وکار مشخص |
+| `search` | جست‌وجو روی عنوان کسب‌وکار |
+| `isApproved` | `true` فقط تاییدشده‌ها، `false` فقط در انتظار تایید، خالی یعنی همه |
+
+خروجی: `{ reviews, page: { total, take, skip } }` — هر نظر شامل اطلاعات کاربر و کسب‌وکار.
+
+### تایید یا رد
+
+`PATCH /reviews/:id/status` با بدنه‌ی `{ "isApproved": true }` — مالک فقط برای کسب‌وکار خودش (در غیر این صورت `NOT_YOUR_BUSINESS_REVIEW`)، ادمین برای همه. با `false` می‌توان نظر تاییدشده را دوباره پنهان کرد.
+
 ## دیتابیس
 
 اسکیما در `prisma/schema.prisma`. مدل‌های اصلی: `Role`, `User`, `Business`, `BusinessSocialLink`, `BusinessImage`, `BusinessReview`, `FavoriteBusiness`, `Category`, `Product`, `ProductImage`, `ProductVariant`, `Order`, `OrderItem`, `Review`, `StockReservation`, `AuditLog`, `Otp`.
 
 نکته: `datasource db` عمداً `url` ندارد؛ اتصال زمان اجرا از طریق driver adapter انجام می‌شود و `DATABASE_URL` فقط توسط Prisma CLI (از طریق `prisma.config.ts`) خوانده می‌شود.
+
+مایگریشن‌های موجود: `0_init` و `20260827120000_review_approval_and_remove_user_role` (افزودن `isApproved`/`approvedAt` و حذف نقش `USER`).
 
 پس از تغییر اسکیما:
 
