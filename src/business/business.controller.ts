@@ -29,7 +29,7 @@ import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/role/role.guard';
 import { Roles } from 'src/role/role.decorator';
 import { Role } from 'src/role/role.enum';
-import { UploadService } from 'src/upload/upload.service';
+import { BUSINESS_SCOPE, UploadService } from 'src/upload/upload.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { OptionalAuthGuard } from 'src/auth/optional.guard';
 
@@ -54,7 +54,13 @@ export class BusinessController {
     if (files?.length > 10) {
       throw new BadRequestException('BUSINESS_IMAGE_LIMIT_EXCEEDED');
     }
-    const uploads = files?.length ? this.uploadService.createMany(files) : [];
+    // کسب‌وکار همین حالا ساخته می‌شود، پس تاریخ امروز مبنای پوشه است
+    const uploads = files?.length
+      ? this.uploadService.createMany(files, {
+          scope: BUSINESS_SCOPE,
+          date: new Date(),
+        })
+      : [];
     return this.businessService.create(dto, userId, uploads);
   }
 
@@ -153,7 +159,12 @@ export class BusinessController {
     files: Express.Multer.File[],
     @Body() body: { altText?: string },
   ) {
-    const uploadResults = this.uploadService.createMany(files);
+    // قبل از نوشتن فایل روی دیسک وجود کسب‌وکار چک و تاریخ پوشه گرفته می‌شود
+    const date = await this.businessService.getUploadDate(id);
+    const uploadResults = this.uploadService.createMany(files, {
+      scope: BUSINESS_SCOPE,
+      date,
+    });
     return this.businessService.addImages(id, uploadResults, body.altText);
   }
 
@@ -173,7 +184,7 @@ export class BusinessController {
   @Roles(Role.Owner)
   @Patch(':businessId/image/:imageId')
   @UseInterceptors(FileInterceptor('file'))
-  replaceImage(
+  async replaceImage(
     @Param('businessId') businessId: string,
     @Param('imageId') imageId: string,
     @UploadedFile(
@@ -187,7 +198,11 @@ export class BusinessController {
     file: Express.Multer.File,
     @Body() body: { altText?: string },
   ) {
-    const upload = this.uploadService.create(file);
+    const date = await this.businessService.getUploadDate(businessId);
+    const upload = this.uploadService.create(file, {
+      scope: BUSINESS_SCOPE,
+      date,
+    });
     return this.businessService.replaceImage(
       businessId,
       imageId,

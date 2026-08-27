@@ -96,6 +96,20 @@ export class BusinessService {
     return { message: 'Business created successfully' };
   }
 
+  /**
+   * تاریخ مبنای پوشه‌بندی آپلود (`uploads/businesses/YYYY/MM/DD`).
+   * برای اینکه همه‌ی تصاویر یک کسب‌وکار کنار هم بمانند، `createdAt` خودِ
+   * کسب‌وکار ملاک است نه زمان آپلود.
+   */
+  async getUploadDate(businessId: string): Promise<Date> {
+    const business = await this.prisma.business.findUnique({
+      where: { id: businessId },
+      select: { createdAt: true },
+    });
+    if (!business) throw new NotFoundException('BUSINESS_NOT_FOUND');
+    return business.createdAt;
+  }
+
   async addImages(
     businessId: string,
     uploads: { filename: string; path: string }[],
