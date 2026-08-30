@@ -1,4 +1,18 @@
-// TODO: use env to save this secret
+import 'dotenv/config';
+import type { JwtSignOptions } from '@nestjs/jwt';
+
+const secret = process.env.JWT_SECRET;
+
+// بدون secret اپ نباید بالا بیاید — وگرنه ناخواسته با یک مقدار پیش‌فرض
+// و قابل حدس زدن توکن امضا می‌شود.
+if (!secret) {
+  throw new Error(
+    'JWT_SECRET is not set. Copy env.example to .env and fill JWT_SECRET.',
+  );
+}
+
 export const jwtConstants = {
-  secret: 'Cd{>3v0.WT?94g#',
+  secret,
+  expiresIn: (process.env.JWT_EXPIRES_IN ??
+    '3600s') as JwtSignOptions['expiresIn'],
 };

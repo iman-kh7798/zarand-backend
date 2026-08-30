@@ -20,7 +20,9 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
+    const request: { user: { role: Role } } = context
+      .switchToHttp()
+      .getRequest();
     const user = request.user; // مثلا از JWT اومده
 
     // فرض می‌کنیم user.roles آرایه‌ای از roleهاست

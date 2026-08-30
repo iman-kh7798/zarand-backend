@@ -2,14 +2,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateProfileDto, UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
+import { SmsService } from 'src/sms/sms.service';
+import { UpdateProductDto } from 'src/products/dto/update-product.dto';
 
 const SALT_ROUNDS = 10;
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private smsService: SmsService,
+  ) {}
 
   // ایجاد یوزر جدید با هش پسورد
   async create(dto: CreateUserDto) {
@@ -63,6 +68,15 @@ export class UserService {
     return safeUser;
   }
 
+  async findByPhone(phone: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { phone },
+    });
+    if (!user) return null;
+
+    const { passwordHash, ...safeUser } = user;
+    return safeUser;
+  }
   // اگر جایی برای لاگین لازم شد:
   async findByEmail(phone: string) {
     return this.prisma.user.findUnique({
@@ -81,12 +95,12 @@ export class UserService {
     const user = await this.prisma.user.update({
       where: { id },
       data: {
-        email: dto.email,
         name: dto.name,
         phone: dto.phone,
         role: dto.roleId ? { connect: { id: dto.roleId } } : undefined,
         // فقط وقتی پسورد جدید داریم، این فیلد رو ست کن
         ...(passwordHash && { passwordHash }),
+        ...(dto.email ? { email: dto.email } : {}),
       },
       include: {
         role: true,
@@ -109,18 +123,74 @@ export class UserService {
     return safeUser;
   }
 
-  // این متد رو برای لاگین بعداً استفاده می‌کنی:
-  async validateUser(phone: string, plainPassword: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { phone },
+  async saveVerificationCode(phone: string, code: string) {
+    const existingCode = await this.prisma.otp.findFirst({
+      where: {
+        phone,
+        expiresAt: {
+          gt: new Date(), // فقط کدهای معتبر (غیر منقضی) رو چک کن
+        },
+      },
     });
 
-    if (!user) return null;
+    if (existingCode) {
+      return { message: 'A valid code already exists for this phone number' };
+    }
+    await this.prisma.otp.create({
+      data: {
+        phone,
+        code,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000), // کد 5 دقیقه اعتبار داره
+      },
+    });
+    // اینجا فقط ذخیره‌سازی انجام میشه، ارسال کد به کاربر رو باید با سرویس دیگه‌ای انجام بدی
 
-    const isMatch = await bcrypt.compare(plainPassword, user.passwordHash);
-    if (!isMatch) return null;
+    // بیا فعلا برای تست کد رو بفرستیم به کاربر همینجا
+    this.smsService.sendCode(phone, code);
+    return { message: `Verification code sent code: ${code}` };
+  }
 
-    const { passwordHash, ...safeUser } = user;
+  async updateProfile(id: string, dto: UpdateProfileDto) {
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: {
+        email: dto.email,
+        name: dto.name,
+        // فقط وقتی پسورد جدید داریم، این فیلد رو ست کن
+      },
+      include: {
+        role: true,
+      },
+    });
+
+    const { passwordHash: _, ...safeUser } = user;
     return safeUser;
+  }
+
+  async findValidOtp(phone: string, code: string) {
+    const otp = await this.prisma.otp.findFirst({
+      where: {
+        phone,
+        code,
+        expiresAt: {
+          gt: new Date(), // فقط کدهای معتبر (غیر منقضی) رو چک کن
+        },
+      },
+    });
+
+    return otp;
+  }
+  async expireValidOtp(phone: string) {
+    await this.prisma.otp.updateMany({
+      where: {
+        phone,
+        expiresAt: {
+          gt: new Date(), // فقط کدهای معتبر (غیر منقضی) رو منقضی کن
+        },
+      },
+      data: {
+        expiresAt: new Date(), // با تنظیم زمان انقضای کد به زمان فعلی، اون رو منقضی می‌کنیم
+      },
+    });
   }
 }

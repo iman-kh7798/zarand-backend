@@ -1,0 +1,35 @@
+# docker-compose.override.yml — LOCAL DEVELOPMENT (auto-loaded by `docker compose`)
+#
+# Swaps the backend to the `development` image target with hot-reload
+# (nest start --watch) and bind-mounts your source into the container.
+#
+#   docker compose up --build          # dev mode (this file is merged in)
+#   docker compose -f docker-compose.yml up -d --build   # prod-like, ignores this file
+#
+# Migrations still run via the entrypoint before the watcher starts.
+
+services:
+  backend:
+    build:
+      context: .
+      target: development
+    environment:
+      NODE_ENV: development
+      # seed on first boot in dev so you get roles + the admin user
+      RUN_SEED: ${RUN_SEED:-true}
+    command: ["npm", "run", "start:dev"]
+    volumes:
+      # live source (host -> container)
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      - ./test:/app/test
+      - ./seed.ts:/app/seed.ts
+      - ./nest-cli.json:/app/nest-cli.json
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./tsconfig.build.json:/app/tsconfig.build.json
+      - ./package.json:/app/package.json
+      - ./eslint.config.mjs:/app/eslint.config.mjs
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      # keep the image's node_modules (don't let the host shadow it)
+      - /app/node_modules

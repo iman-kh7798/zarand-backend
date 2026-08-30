@@ -4,6 +4,9 @@ import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from './role.guard';
 import { Roles } from './role.decorator';
 import { Role } from './role.enum';
+import { ApiBearerAuth } from '@nestjs/swagger';
+
+@ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, RolesGuard)
 @Controller('role')
 export class RoleController {

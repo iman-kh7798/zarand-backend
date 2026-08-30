@@ -1,11 +1,27 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
+import { SocialPlatform } from '@prisma/client';
 import {
   IsString,
   IsOptional,
   IsNotEmpty,
+  IsNumberString,
   IsUUID,
-  IsEmail,
+  IsEnum,
+  IsUrl,
+  IsArray,
+  ArrayMaxSize,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class CreateBusinessSocialLinkDto {
+  @IsEnum(SocialPlatform)
+  platform: SocialPlatform;
+
+  @IsUrl()
+  @IsNotEmpty()
+  url: string;
+}
 
 export class CreateBusinessDto {
   @IsString()
@@ -20,35 +36,25 @@ export class CreateBusinessDto {
   @IsOptional()
   address?: string;
 
-  @IsUUID()
-  @IsNotEmpty()
-  ownerId: string;
-}
-export class CreateBusinessByUserDto {
-  @IsEmail()
-  @IsOptional()
-  email?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  password: string; // از bcrypt هش می‌کنیم بعد ذخیره می‌کنیم
-
-  @IsString()
-  name?: string;
-
-  @IsString()
-  @IsNotEmpty()
+  @IsNumberString()
   phone: string;
 
-  @IsString()
-  @IsNotEmpty()
-  title: string;
-
-  @IsString()
+  @IsUUID()
   @IsOptional()
-  description?: string;
+  categoryId?: string;
 
-  @IsString()
+  @IsNumberString()
   @IsOptional()
-  address?: string;
+  lat?: string;
+
+  @IsNumberString()
+  @IsOptional()
+  lng?: string;
+
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => CreateBusinessSocialLinkDto)
+  @IsOptional()
+  socialLinks?: CreateBusinessSocialLinkDto[];
 }

@@ -1,10 +1,10 @@
-// prisma/seed.ts
-import 'dotenv';
+import 'dotenv/config';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
-import { PrismaClient } from './generated/prisma/client';
 import * as bcrypt from 'bcrypt';
+import { PrismaClient } from '@prisma/client';
 const adapter = new PrismaMariaDb({
-  host: process.env.DATABASE_HOST,
+  host: process.env.DATABASE_HOST ?? 'localhost',
+  port: Number(process.env.DATABASE_PORT ?? 3306),
   user: process.env.DATABASE_USER,
   password: process.env.DATABASE_PASSWORD,
   database: process.env.DATABASE_NAME,
@@ -13,7 +13,28 @@ const adapter = new PrismaMariaDb({
 
 const prisma = new PrismaClient({ adapter });
 
-async function main() {
+async function rolesSeed() {
+  // نقش‌ها رو طوری upsert می‌کنیم که اگر وجود داشت، دوباره ساخته نشه
+  const roles = [
+    { name: 'ADMIN', description: 'System administrator' },
+    { name: 'OWNER', description: 'Business owner' },
+  ];
+
+  for (const role of roles) {
+    await prisma.role.upsert({
+      where: { name: role.name },
+      update: {}, // اگر هست کاری نکن
+      create: {
+        name: role.name,
+        description: role.description,
+      },
+    });
+  }
+
+  console.log('Roles seeded successfully ✅');
+}
+
+async function usersSeed() {
   const passwordHash = await bcrypt.hash('iman123', 10);
   await prisma.user.upsert({
     where: { phone: '09302207762' },
@@ -28,6 +49,12 @@ async function main() {
   });
 
   console.log('Admin seeded successfully ✅');
+}
+
+async function main() {
+  await rolesSeed();
+  await usersSeed();
+  console.log('All seeded successfully ✅');
 }
 
 main()

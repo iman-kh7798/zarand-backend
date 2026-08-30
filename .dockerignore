@@ -1,0 +1,51 @@
+# ---- deps & build output (rebuilt inside the image) ----
+node_modules
+dist
+build
+coverage
+.nyc_output
+generated
+.prisma
+
+# ---- VCS / CI ----
+.git
+.gitignore
+.github
+
+# ---- secrets & local env (passed at runtime via env_file / -e) ----
+.env
+.env.*
+!.env.docker.example
+*.pem
+gh_deploy_key
+gh_deploy_key.pub
+
+# ---- logs & runtime data ----
+logs
+*.log
+npm-debug.log*
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# ---- runtime-generated / mounted at runtime ----
+uploads
+
+# ---- editor / OS ----
+.vscode
+.idea
+.DS_Store
+*.sublime-workspace
+
+# ---- docker / docs (not needed in build context) ----
+Dockerfile
+.dockerignore
+docker-compose*.yml
+README.md
+PROJECT_DOCUMENTATION.md
+CLAUDE.md
+
+# ---- tests ----
+test
+**/*.spec.ts

@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
 } from 'class-validator';
 
 export class CreateUserDto {
@@ -17,10 +18,11 @@ export class CreateUserDto {
   password: string; // از bcrypt هش می‌کنیم بعد ذخیره می‌کنیم
 
   @IsString()
-  name?: string;
+  name?: string | null;
 
-  @IsString()
-  @IsNotEmpty()
+  @Matches(/^(\+98|0098|0)?9\d{9}$/, {
+    message: 'phone is not valid',
+  })
   phone: string;
 
   @IsNumber()
