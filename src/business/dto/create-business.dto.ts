@@ -11,6 +11,7 @@ import {
   IsArray,
   ArrayMaxSize,
   ValidateNested,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -57,4 +58,16 @@ export class CreateBusinessDto {
   @Type(() => CreateBusinessSocialLinkDto)
   @IsOptional()
   socialLinks?: CreateBusinessSocialLinkDto[];
+
+  /**
+   * ایندکس تصویر کاور/اصلی داخل آرایه‌ی فایل‌های آپلودی (`files`).
+   * ورودی multipart رشته است، پس `IsNumberString`. اگر ارسال نشود یا نامعتبر
+   * باشد، اولین تصویر به‌عنوان اصلی در نظر گرفته می‌شود.
+   */
+  @ValidateIf(
+    (o: CreateBusinessDto) =>
+      o.mainImageIndex !== undefined && o.mainImageIndex !== '',
+  )
+  @IsNumberString()
+  mainImageIndex?: string;
 }

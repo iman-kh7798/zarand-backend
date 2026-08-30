@@ -179,12 +179,14 @@ model BusinessImage {
   url        String
   altText    String?
   position   Int      @default(0)
+  isPrimary  Boolean  @default(false)
   metadata   Json?
   businessId String   @db.Char(36)
   createdAt  DateTime @default(now())
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId], map: "BusinessImage_businessId_fkey")
+  @@index([businessId, isPrimary])
 }
 
 /// واریانت محصول (رنگ/سایز و ...)

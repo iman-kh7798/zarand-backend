@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class CreateBusinessImageDto {
   @IsString()
@@ -10,4 +10,8 @@ export class CreateBusinessImageDto {
 
   @IsString()
   businessId: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isPrimary?: boolean;
 }

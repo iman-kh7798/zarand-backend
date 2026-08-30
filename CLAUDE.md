@@ -123,6 +123,7 @@ payload توکن: `{ sub, phone, role, name }`.
 | `business/:id`                                                                       | GET / PATCH / DELETE | Optional / ADMIN+OWNER                                    |
 | `business/:id/status`                                                                | PATCH                | ADMIN                                                     |
 | `business/:id/upload-images`, `:businessId/image/:imageId`                           | POST/PATCH/DELETE    | OWNER                                                     |
+| `business/:businessId/images/:imageId/set-main`                                      | PATCH                | ADMIN + OWNER (مالکِ همان کسب‌وکار) — ست تصویر اصلی/کاور  |
 | `business/:id/favorite`, `business/favorites/me`                                     | POST/DELETE/GET      | لاگین                                                     |
 | `business/:businessId/reviews`                                                       | POST                 | لاگین                                                     |
 | `business/:businessId/reviews`                                                       | GET                  | عمومی — فقط تاییدشده‌ها (+ نظر خود کاربر لاگین‌کرده)      |
@@ -172,6 +173,7 @@ secret و انقضای توکن از env می‌آیند (`JWT_SECRET` اجبا�
 - `PROJECT_DOCUMENTATION.md` بازنویسی شد.
 - نقش `USER` کاملاً حذف شد (enum، همه‌ی `@Roles`، seed و دیتابیس از طریق مایگریشن).
 - جریان تایید نظرها اضافه شد: `isApproved`/`approvedAt` روی `BusinessReview`، لیست مدیریت `GET /reviews` و `PATCH /reviews/:id/status`.
+- تصویر اصلی/کاور گالری کسب‌وکار: فیلد `BusinessImage.isPrimary` + مایگریشن `20260830120000_business_image_primary` (بک‌فیل قدیمی‌ترین تصویر هر کسب‌وکار). اندپوینت `PATCH business/:businessId/images/:imageId/set-main` (تراکنش: صفر کردن بقیه + ست انتخابی، احراز مالکیت در `BusinessService.assertBusinessManageable`). حذف تصویر اصلی → اولین تصویر باقی‌مانده جانشین می‌شود. `addImages` اگر کسب‌وکار تصویر اصلی نداشته باشد اولین تصویر جدید را اصلی می‌کند؛ در `POST /business` فیلد اختیاری `mainImageIndex` (رشته، ایندکس داخل `files`) کاور را تعیین می‌کند. `findOne` تصاویر را با تصویر اصلی اول برمی‌گرداند و فیلد `mainImage` جدا هم دارد؛ همین ترتیب (`PRIMARY_IMAGE_ORDER`) در همه‌ی لیست‌های business اعمال شد.
 - `reviewsAverage` / `reviewsCount` به همه‌ی لیست‌های business اضافه شد (`BusinessService.listBusinesses`, `getFavorites` و لیست‌های `CategoriesService`). چهار متد `findAll/findByStatus/findPerOwner/findPerOwnerByStatus` روی هلپر خصوصی `listBusinesses` یکی شدند.
 
 ## Codebase Navigation & Search
