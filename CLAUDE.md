@@ -115,26 +115,26 @@ payload توکن: `{ sub, phone, role, name }`.
 
 ## نقشه‌ی روت‌ها (خلاصه)
 
-| مسیر | متد | دسترسی |
-|---|---|---|
-| `auth/send-phone`, `auth/verify-code` | POST | عمومی |
-| `business` | GET | Optional auth — ناشناس فقط APPROVED؛ OWNER فقط مال خودش |
-| `business` | POST | OWNER (multipart، تا ۱۰ عکس) |
-| `business/:id` | GET / PATCH / DELETE | Optional / ADMIN+OWNER |
-| `business/:id/status` | PATCH | ADMIN |
-| `business/:id/upload-images`, `:businessId/image/:imageId` | POST/PATCH/DELETE | OWNER |
-| `business/:id/favorite`, `business/favorites/me` | POST/DELETE/GET | لاگین |
-| `business/:businessId/reviews` | POST | لاگین |
-| `business/:businessId/reviews` | GET | عمومی — فقط تاییدشده‌ها (+ نظر خود کاربر لاگین‌کرده) |
-| `reviews` | GET | OWNER (فقط کسب‌وکار خودش) / ADMIN (همه) — لیست مدیریت |
-| `reviews/:id/status` | PATCH | OWNER (کسب‌وکار خودش) / ADMIN — تایید یا رد |
-| `reviews/:id` | PUT / DELETE | فقط صاحب همان نظر |
-| `categories`, `categories/:id`, `categories/slug/:slug`, `categories/:id/businesses` | GET | عمومی |
-| `categories` (POST/PATCH/DELETE), `categories/business/set` | — | ADMIN (ست‌کردن دسته: ADMIN+OWNER) |
-| `users` CRUD | — | ADMIN؛ `users/profile` (GET/POST) برای همه‌ی لاگین‌شده‌ها |
-| `role` | GET | ADMIN |
-| `favorite-businesses/*` | — | لاگین (ماژول رجیستر نشده) |
-| `products/*`, `product-image/*` | — | **غیرفعال** (ماژول در app.module کامنت است) |
+| مسیر                                                                                 | متد                  | دسترسی                                                    |
+| ------------------------------------------------------------------------------------ | -------------------- | --------------------------------------------------------- |
+| `auth/send-phone`, `auth/verify-code`                                                | POST                 | عمومی                                                     |
+| `business`                                                                           | GET                  | Optional auth — ناشناس فقط APPROVED؛ OWNER فقط مال خودش   |
+| `business`                                                                           | POST                 | OWNER (multipart، تا ۱۰ عکس)                              |
+| `business/:id`                                                                       | GET / PATCH / DELETE | Optional / ADMIN+OWNER                                    |
+| `business/:id/status`                                                                | PATCH                | ADMIN                                                     |
+| `business/:id/upload-images`, `:businessId/image/:imageId`                           | POST/PATCH/DELETE    | OWNER                                                     |
+| `business/:id/favorite`, `business/favorites/me`                                     | POST/DELETE/GET      | لاگین                                                     |
+| `business/:businessId/reviews`                                                       | POST                 | لاگین                                                     |
+| `business/:businessId/reviews`                                                       | GET                  | عمومی — فقط تاییدشده‌ها (+ نظر خود کاربر لاگین‌کرده)      |
+| `reviews`                                                                            | GET                  | OWNER (فقط کسب‌وکار خودش) / ADMIN (همه) — لیست مدیریت     |
+| `reviews/:id/status`                                                                 | PATCH                | OWNER (کسب‌وکار خودش) / ADMIN — تایید یا رد               |
+| `reviews/:id`                                                                        | PUT / DELETE         | فقط صاحب همان نظر                                         |
+| `categories`, `categories/:id`, `categories/slug/:slug`, `categories/:id/businesses` | GET                  | عمومی                                                     |
+| `categories` (POST/PATCH/DELETE), `categories/business/set`                          | —                    | ADMIN (ست‌کردن دسته: ADMIN+OWNER)                         |
+| `users` CRUD                                                                         | —                    | ADMIN؛ `users/profile` (GET/POST) برای همه‌ی لاگین‌شده‌ها |
+| `role`                                                                               | GET                  | ADMIN                                                     |
+| `favorite-businesses/*`                                                              | —                    | لاگین (ماژول رجیستر نشده)                                 |
+| `products/*`, `product-image/*`                                                      | —                    | **غیرفعال** (ماژول در app.module کامنت است)               |
 
 ## احراز هویت (جریان OTP)
 
@@ -173,3 +173,99 @@ secret و انقضای توکن از env می‌آیند (`JWT_SECRET` اجبا�
 - نقش `USER` کاملاً حذف شد (enum، همه‌ی `@Roles`، seed و دیتابیس از طریق مایگریشن).
 - جریان تایید نظرها اضافه شد: `isApproved`/`approvedAt` روی `BusinessReview`، لیست مدیریت `GET /reviews` و `PATCH /reviews/:id/status`.
 - `reviewsAverage` / `reviewsCount` به همه‌ی لیست‌های business اضافه شد (`BusinessService.listBusinesses`, `getFavorites` و لیست‌های `CategoriesService`). چهار متد `findAll/findByStatus/findPerOwner/findPerOwnerByStatus` روی هلپر خصوصی `listBusinesses` یکی شدند.
+
+## Codebase Navigation & Search
+
+### Primary Rule
+
+Use `codebase-memory-mcp` as the **primary tool for navigating, searching, and understanding the codebase**.
+
+Before searching the repository manually, use `codebase-memory-mcp` whenever the location, relationship, or impact of the code is not already known.
+
+### Use codebase-memory-mcp for
+
+- Finding files, classes, functions, methods, variables, DTOs, services, controllers, models, and other symbols.
+- Finding references and usages of a symbol.
+- Understanding relationships and dependencies between parts of the codebase.
+- Tracing call chains and execution flow.
+- Performing impact analysis before modifying existing functionality.
+- Finding all relevant code affected by a feature or schema change.
+- Understanding the architecture and structure of the project.
+- Finding related code before implementing a new feature.
+- Investigating how an existing feature works.
+
+### Do NOT use codebase-memory-mcp unnecessarily
+
+If the exact file path is already known, read the file directly.
+
+Do not use `codebase-memory-mcp` simply to locate a file whose path is already known.
+
+Use direct file reading/editing tools for inspecting and modifying the actual source code.
+
+### Search Workflow
+
+When the location or impact of a change is unknown, follow this workflow:
+
+1. Use `codebase-memory-mcp` to locate relevant files and symbols.
+2. Use `codebase-memory-mcp` to find references, dependencies, and related code.
+3. Read the identified source files directly.
+4. Understand the existing implementation before making changes.
+5. Make the smallest consistent change required.
+6. Check related code for regressions or required updates.
+7. Run the relevant tests, type checks, linting, or build commands when applicable.
+
+Avoid manually scanning the entire repository with generic search tools unless `codebase-memory-mcp` cannot provide the required information.
+
+### Before Modifying Existing Code
+
+Before modifying an existing feature, first use `codebase-memory-mcp` to understand:
+
+- Where the functionality is implemented.
+- Which files and symbols depend on it.
+- Which files it depends on.
+- Where it is referenced or consumed.
+- Whether the change can affect other parts of the application.
+
+Do not modify code based only on the first matching file when the change may have wider impact.
+
+### NestJS Architecture
+
+For NestJS changes, when relevant, inspect the complete flow:
+
+`Controller → DTO → Service → Prisma → Database`
+
+Also check related modules, guards, interceptors, pipes, repositories, and consumers when applicable.
+
+### Prisma / Database Changes
+
+Before modifying `schema.prisma` or a Prisma model:
+
+1. Use `codebase-memory-mcp` to find usages of the affected model and fields.
+2. Check related DTOs, services, controllers, queries, and business logic.
+3. Identify code that may break because of the schema change.
+4. Apply the schema change.
+5. Update all affected code consistently.
+6. Run the appropriate Prisma generation, type checks, tests, and migrations when required.
+
+### API Changes
+
+Before changing an API endpoint, inspect:
+
+- Controller
+- Request DTO
+- Response DTO
+- Service
+- Prisma/database queries
+- Validation
+- Guards/authentication
+- Related API consumers
+
+Use `codebase-memory-mcp` to find references and dependencies before making the change.
+
+### General Principle
+
+`codebase-memory-mcp` is the **primary tool for codebase discovery and code understanding**.
+
+Direct file tools are the **primary tools for reading and modifying source code**.
+
+Prefer understanding the impact of a change before editing rather than discovering dependencies after the change has already been made.
