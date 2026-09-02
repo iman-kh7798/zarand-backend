@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/role/role.guard';
@@ -24,6 +25,8 @@ export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
 
   // ثبت پیشنهاد و بازخورد — عمومی، بدون نیاز به لاگین
+  // ضد اسپم: ۵ ثبت در ۱۰ دقیقه به‌ازای هر IP
+  @Throttle({ default: { ttl: 600_000, limit: 5 } })
   @Post()
   create(@Body() dto: CreateFeedbackDto) {
     return this.feedbackService.create(dto);

@@ -10,6 +10,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/role/role.guard';
@@ -26,6 +27,8 @@ export class BusinessReportController {
   constructor(private readonly service: BusinessReportService) {}
 
   // ثبت گزارش اصلاح اطلاعات — عمومی، بدون نیاز به لاگین
+  // ضد اسپم: ۵ گزارش در ۱۰ دقیقه به‌ازای هر IP
+  @Throttle({ default: { ttl: 600_000, limit: 5 } })
   @Post()
   create(@Body() dto: CreateBusinessReportDto) {
     return this.service.create(dto);

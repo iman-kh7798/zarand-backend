@@ -1,5 +1,6 @@
+import { BusinessReviewStatus } from '@prisma/client';
 import {
-  IsBooleanString,
+  IsEnum,
   IsNumberString,
   IsOptional,
   IsString,
@@ -32,8 +33,8 @@ export class ListBusinessReviewsDto {
   @IsOptional()
   search?: string;
 
-  /** 'true' فقط تاییدشده‌ها، 'false' فقط در انتظار تایید، خالی یعنی همه */
-  @IsBooleanString()
+  /** فیلتر وضعیت: PENDING / APPROVED / REJECTED؛ خالی یعنی همه */
+  @IsEnum(BusinessReviewStatus)
   @IsOptional()
-  isApproved?: string;
+  status?: BusinessReviewStatus;
 }

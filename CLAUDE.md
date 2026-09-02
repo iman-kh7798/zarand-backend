@@ -98,7 +98,7 @@ Token payload: `{ sub, phone, role, name }`.
 
 **10. Pagination:** `take`/`skip` + `lastId` as cursor; response shape `{ items, page: { total, take, skip } }`.
 
-**11. Review approval flow:** `BusinessReview.isApproved` defaults to `false`. A new review — and every **edit** of a review — goes back to pending (`isApproved: false`, `approvedAt: null`). Only the `OWNER` of the related business and `ADMIN` can approve. Every query that returns public review stats or lists **must** filter `isApproved: true`.
+**11. Review approval flow:** `BusinessReview.status` is an enum `BusinessReviewStatus` (`PENDING | APPROVED | REJECTED`), default `PENDING`. A new review — and every **edit** of a review — goes back to `status: PENDING`, `approvedAt: null`. Only the `OWNER` of the related business and `ADMIN` can change status (`PATCH /reviews/:id/status` with body `{ status }`); `setStatus` sets `approvedAt` only when `APPROVED`. Every query that returns public review stats or lists **must** filter `status: 'APPROVED'`. The moderation list `GET /reviews` accepts an optional `status` filter (and OWNER is always scoped to their own businesses; `?businessId=` narrows further).
 
 **12. Review stats in business lists:** wherever a list of businesses is returned it must also include `reviewsAverage` and `reviewsCount`. Use `BusinessReviewService.withStats(rows)` (or `getStatsFor(ids)` for nested structures) — it works with one `groupBy` for the whole list, so don't call it inside a `map`. If you add a new list, do the same for it.
 
@@ -109,11 +109,12 @@ Token payload: `{ sub, phone, role, name }`.
 - `prisma/schema.prisma` — `datasource db` has **no `url`**; the connection goes through the `@prisma/adapter-mariadb` driver adapter in `PrismaService` using env vars `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME`. `DATABASE_URL` is only needed for the CLI (in `prisma.config.ts`).
   - Both paths (`PrismaService` and `seed.ts`) fall back to `localhost:3306`. Make sure `DATABASE_URL` and `DATABASE_HOST` point to the same server.
 - Models: `Role, User, Business, BusinessSocialLink, FavoriteBusiness, Category, Product, ProductImage, BusinessImage, ProductVariant, Order, OrderItem, Review, BusinessReview, StockReservation, AuditLog, Otp, Feedback, BusinessReport`.
+  - `BusinessReview.status` is enum `BusinessReviewStatus` (`PENDING`/`APPROVED`/`REJECTED`) — replaced the old `isApproved` boolean (migration `20260902160000_review_status_enum`, which backfills `isApproved=true` → `APPROVED`).
   - Order/cart (`Order`, `OrderItem`, `StockReservation`) exist in the schema but have **no module/route**.
 - Keys: `String @db.Char(36)` with `uuid()`; `Role.id` is an integer (1=ADMIN, 2=OWNER, 3=USER per `seed.ts`).
 - `Business.status`: `PENDING | APPROVED | REJECTED`. Anonymous users only see `APPROVED`.
 - After a schema change: `npx prisma migrate dev --name ...` then `npm run generate`.
-- Migrations: `0_init` and `20260827120000_review_approval_and_remove_user_role`.
+- Migrations: `0_init`, `20260827120000_review_approval_and_remove_user_role`, `20260902144603_add_feedback`, `20260902150406_add_business_report`, `20260902160000_review_status_enum`.
 - ⚠️ The DB is not reachable from my dev environment, so `migrate dev` cannot run. To create a new migration without a DB:
   `npx prisma migrate diff --from-schema <old-schema> --to-schema prisma/schema.prisma --script`
   (in Prisma 7 the flags are `--from-schema`/`--to-schema`, not `--from-schema-datamodel`.)
@@ -132,7 +133,7 @@ Token payload: `{ sub, phone, role, name }`.
 | `business/:businessId/reviews`                                                       | POST                 | logged in                                                          |
 | `business/:businessId/reviews`                                                       | GET                  | public — only approved (+ the logged-in user's own review)         |
 | `reviews`                                                                            | GET                  | OWNER (own business only) / ADMIN (all) — management list          |
-| `reviews/:id/status`                                                                 | PATCH                | OWNER (own business) / ADMIN — approve or reject                   |
+| `reviews/:id/status`                                                                 | PATCH                | OWNER (own business) / ADMIN — body `{ status: PENDING\|APPROVED\|REJECTED }` |
 | `reviews/:id`                                                                        | PUT / DELETE         | only the review's own author                                       |
 | `categories`, `categories/:id`, `categories/slug/:slug`, `categories/:id/businesses` | GET                  | public                                                             |
 | `categories` (POST/PATCH/DELETE), `categories/business/set`                          | —                    | ADMIN (setting a category: ADMIN+OWNER)                            |
@@ -185,3 +186,5 @@ Token secret and expiry come from env (`JWT_SECRET` is required — the app fail
 - Review approval flow was added: `isApproved`/`approvedAt` on `BusinessReview`, management list `GET /reviews`, and `PATCH /reviews/:id/status`.
 - `reviewsAverage` / `reviewsCount` added to all business lists (`BusinessService.listBusinesses`, `getFavorites`, and `CategoriesService` lists). The four methods `findAll/findByStatus/findPerOwner/findPerOwnerByStatus` were unified onto the private `listBusinesses` helper.
 - `business-report` module added: `BusinessReport` model + `BusinessReportType` (`INCORRECT_INFO`/`BUSINESS_CLOSED`/`DUPLICATE`/`OTHER`) & `BusinessReportStatus` (`PENDING`/`RESOLVED`/`REJECTED`) enums, migration `20260902150406_add_business_report`. Public `POST /business-reports`; ADMIN sees all, OWNER only reports for their own businesses (`NOT_YOUR_BUSINESS_REPORT`). `description` is required for `INCORRECT_INFO`/`OTHER` only (`@ValidateIf`). On create, `SmsService.sendBusinessReportNotice` texts the owner — best-effort, swallows errors since SMS isn't fully wired.
+- Review approval upgraded from the `isApproved` boolean to a 3-state `BusinessReviewStatus` enum (`PENDING`/`APPROVED`/`REJECTED`) on `BusinessReview` — migration `20260902160000_review_status_enum` (adds `status`, backfills `isApproved=true` → `APPROVED`, drops `isApproved`). `setApproval` → `setStatus`; `UpdateReviewStatusDto`/`ListBusinessReviewsDto` now use `status` (was `isApproved`). Every public stat/list still filters `status: 'APPROVED'`. `scripts/seed-fake.ts` updated to emit `status`.
+- Rate limiting added via `@nestjs/throttler`: global `ThrottlerModule.forRoot` (300 req/min per IP) + global `ThrottlerGuard` (`APP_GUARD` in `app.module.ts`). Strict per-route `@Throttle` overrides: `auth/send-phone` 5/10min, `auth/verify-code` 10/10min, `POST /feedback` and `POST /business-reports` 5/10min. `main.ts` sets `trust proxy` (1) so the client IP is read correctly behind the cPanel proxy. (No CAPTCHA yet — deferred; throttler only.)

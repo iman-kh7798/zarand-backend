@@ -1,8 +1,12 @@
-import { IsBoolean, IsNotEmpty } from 'class-validator';
+import { BusinessReviewStatus } from '@prisma/client';
+import { IsEnum } from 'class-validator';
 
-/** تایید یا رد کردن یک نظر توسط مالک کسب‌وکار یا ادمین */
+/**
+ * تغییر وضعیت یک نظر توسط مالک کسب‌وکار یا ادمین.
+ * APPROVED یعنی به کاربران عمومی نشان داده شود، REJECTED یعنی اسپم/نامناسب،
+ * PENDING یعنی برگرداندن به صف بررسی.
+ */
 export class UpdateReviewStatusDto {
-  @IsBoolean()
-  @IsNotEmpty()
-  isApproved: boolean;
+  @IsEnum(BusinessReviewStatus)
+  status: BusinessReviewStatus;
 }

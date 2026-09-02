@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -8,9 +9,11 @@ import { winstonConfig } from './config/winston.config';
 import { AllExceptionsFilter } from './exception-filter/exception-filter.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: WinstonModule.createLogger(winstonConfig),
   });
+  // پشت پروکسی cPanel اجرا می‌شود؛ برای گرفتن IP واقعی کلاینت (throttler)
+  app.set('trust proxy', 1);
   const config = new DocumentBuilder()
     .setTitle('Zarand Backend')
     .setDescription('Zarand api description')

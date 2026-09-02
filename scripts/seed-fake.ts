@@ -8,7 +8,12 @@
 import 'dotenv/config';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import * as bcrypt from 'bcrypt';
-import { PrismaClient, BusinessStatus, SocialPlatform } from '@prisma/client';
+import {
+  PrismaClient,
+  BusinessStatus,
+  SocialPlatform,
+  BusinessReviewStatus,
+} from '@prisma/client';
 
 const adapter = new PrismaMariaDb({
   host: process.env.DATABASE_HOST ?? 'localhost',
@@ -419,7 +424,11 @@ async function main() {
         : chance(0.6)
           ? REVIEW_MIXED
           : REVIEW_NEG;
-      const isApproved = chance(0.8);
+      const status = chance(0.8)
+        ? BusinessReviewStatus.APPROVED
+        : chance(0.5)
+          ? BusinessReviewStatus.PENDING
+          : BusinessReviewStatus.REJECTED;
       const createdAt = daysAgo(int(3, 120));
       const r = await prisma.businessReview.create({
         data: {
@@ -432,10 +441,11 @@ async function main() {
                 ? int(3, 4)
                 : int(1, 2),
           body: pick(bucket),
-          isApproved,
-          approvedAt: isApproved
-            ? clampNow(new Date(createdAt.getTime() + 86400000))
-            : null,
+          status,
+          approvedAt:
+            status === BusinessReviewStatus.APPROVED
+              ? clampNow(new Date(createdAt.getTime() + 86400000))
+              : null,
           createdAt,
         },
         select: { id: true },
@@ -463,7 +473,7 @@ async function main() {
         parentId: root.id,
         rating: null,
         body: pick(OWNER_REPLIES),
-        isApproved: true,
+        status: BusinessReviewStatus.APPROVED,
         approvedAt: createdAt,
         createdAt,
       });
@@ -476,15 +486,17 @@ async function main() {
       const createdAt = clampNow(
         new Date(root.createdAt.getTime() + int(2, 15) * 86400000),
       );
-      const isApproved = chance(0.85);
+      const status = chance(0.85)
+        ? BusinessReviewStatus.APPROVED
+        : BusinessReviewStatus.PENDING;
       replies.push({
         businessId: root.businessId,
         userId: other.id,
         parentId: root.id,
         rating: null,
         body: pick(USER_REPLIES),
-        isApproved,
-        approvedAt: isApproved ? createdAt : null,
+        status,
+        approvedAt: status === BusinessReviewStatus.APPROVED ? createdAt : null,
         createdAt,
       });
     }

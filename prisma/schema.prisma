@@ -271,17 +271,24 @@ model Review {
   @@index([userId])
 }
 
+/// وضعیت بررسی نظر توسط ادمین/مالک کسب‌وکار برای جلوگیری از اسپم
+enum BusinessReviewStatus {
+  PENDING // در انتظار بررسی
+  APPROVED // تاییدشده — به کاربران عمومی نشان داده می‌شود
+  REJECTED // رد شده
+}
+
 /// نظرات کسب‌وکار
 model BusinessReview {
-  id         String    @id @default(uuid()) @db.Char(36)
+  id         String               @id @default(uuid()) @db.Char(36)
   rating     Int? // فقط برای نظر ریشه؛ برای پاسخ‌ها null است
   body       String?
-  isApproved Boolean   @default(false)
-  approvedAt DateTime?
-  createdAt  DateTime  @default(now())
-  businessId String    @db.Char(36)
-  userId     String    @db.Char(36)
-  parentId   String?   @db.Char(36) // اگر مقدار داشته باشد، این نظر یک «پاسخ» است (فقط یک سطح)
+  status     BusinessReviewStatus @default(PENDING)
+  approvedAt DateTime? // زمان تایید؛ فقط وقتی status = APPROVED مقدار دارد
+  createdAt  DateTime             @default(now())
+  businessId String               @db.Char(36)
+  userId     String               @db.Char(36)
+  parentId   String?              @db.Char(36) // اگر مقدار داشته باشد، این نظر یک «پاسخ» است (فقط یک سطح)
 
   business Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
   user     User             @relation(fields: [userId], references: [id])
@@ -291,9 +298,9 @@ model BusinessReview {
   @@index([businessId])
   @@index([userId])
   @@index([parentId])
-  @@index([businessId, isApproved])
-  @@index([businessId, parentId, isApproved])
-  @@index([isApproved, createdAt])
+  @@index([businessId, status])
+  @@index([businessId, parentId, status])
+  @@index([status, createdAt])
 }
 
 /// رزرو موجودی

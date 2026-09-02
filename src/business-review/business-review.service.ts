@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { BusinessReviewStatus, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Role } from 'src/role/role.enum';
 import { CreateBusinessReviewDto } from './dto/create-business-review.dto';
@@ -67,13 +67,13 @@ export class BusinessReviewService {
       select: { id: true },
     });
     if (existing) {
-      // ویرایش نظر، آن را دوباره به حالت در انتظار تایید برمی‌گرداند
+      // ویرایش نظر، آن را دوباره به حالت در انتظار بررسی برمی‌گرداند
       const review = await this.prisma.businessReview.update({
         where: { id: existing.id },
         data: {
           rating: dto.rating,
           body: dto.body,
-          isApproved: false,
+          status: BusinessReviewStatus.PENDING,
           approvedAt: null,
         },
       });
@@ -102,8 +102,8 @@ export class BusinessReviewService {
       data: {
         rating: dto.rating ?? review.rating,
         body: dto.body ?? review.body,
-        // هر ویرایشی نیاز به تایید مجدد دارد
-        isApproved: false,
+        // هر ویرایشی نیاز به بررسی مجدد دارد
+        status: BusinessReviewStatus.PENDING,
         approvedAt: null,
       },
     });
@@ -125,10 +125,10 @@ export class BusinessReviewService {
   }
 
   /**
-   * تایید یا رد کردن یک نظر.
+   * تغییر وضعیت یک نظر (در انتظار بررسی / تاییدشده / رد شده).
    * ادمین به همه‌ی نظرها دسترسی دارد، مالک فقط به نظرهای کسب‌وکار خودش.
    */
-  async setApproval(id: string, isApproved: boolean, actor: Actor) {
+  async setStatus(id: string, status: BusinessReviewStatus, actor: Actor) {
     const review = await this.prisma.businessReview.findUnique({
       where: { id },
       include: { business: { select: { ownerId: true } } },
@@ -142,8 +142,9 @@ export class BusinessReviewService {
     return await this.prisma.businessReview.update({
       where: { id },
       data: {
-        isApproved,
-        approvedAt: isApproved ? new Date() : null,
+        status,
+        approvedAt:
+          status === BusinessReviewStatus.APPROVED ? new Date() : null,
       },
       include: {
         user: { select: { id: true, name: true, phone: true } },
@@ -156,7 +157,7 @@ export class BusinessReviewService {
    * لیست نظرها برای پنل مدیریت.
    * ادمین نظرهای همه‌ی کسب‌وکارها را می‌بیند، مالک فقط نظرهای کسب‌وکارهای خودش را.
    * قابل فیلتر بر اساس کسب‌وکار (`businessId`)، جست‌وجو روی عنوان کسب‌وکار (`search`)
-   * و وضعیت تایید (`isApproved`).
+   * و وضعیت بررسی (`status`).
    */
   async listForModeration(actor: Actor, query: ListBusinessReviewsDto) {
     const take = query.take ? +query.take : 10;
@@ -172,9 +173,7 @@ export class BusinessReviewService {
 
     const where: Prisma.BusinessReviewWhereInput = {
       ...(query.businessId ? { businessId: query.businessId } : {}),
-      ...(query.isApproved !== undefined
-        ? { isApproved: query.isApproved === 'true' }
-        : {}),
+      ...(query.status ? { status: query.status } : {}),
       ...(Object.keys(businessFilter).length
         ? { business: businessFilter }
         : {}),
@@ -212,7 +211,7 @@ export class BusinessReviewService {
       // فقط نظرهای ریشه‌ی تاییدشده در آمار حساب می‌شوند (پاسخ‌ها rating ندارند)
       where: {
         businessId: { in: businessIds },
-        isApproved: true,
+        status: BusinessReviewStatus.APPROVED,
         parentId: null,
       },
       _avg: { rating: true },
@@ -249,13 +248,20 @@ export class BusinessReviewService {
    */
   async listByBusiness(businessId: string, viewerId?: string) {
     const where: Prisma.BusinessReviewWhereInput = viewerId
-      ? { businessId, OR: [{ isApproved: true }, { userId: viewerId }] }
-      : { businessId, isApproved: true };
+      ? {
+          businessId,
+          OR: [{ status: BusinessReviewStatus.APPROVED }, { userId: viewerId }],
+        }
+      : { businessId, status: BusinessReviewStatus.APPROVED };
 
     const [agg, rows] = await Promise.all([
       this.prisma.businessReview.aggregate({
         // میانگین و تعداد فقط از روی نظرهای ریشه‌ی تاییدشده
-        where: { businessId, isApproved: true, parentId: null },
+        where: {
+          businessId,
+          status: BusinessReviewStatus.APPROVED,
+          parentId: null,
+        },
         _avg: { rating: true },
         _count: { _all: true },
       }),

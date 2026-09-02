@@ -67,17 +67,17 @@ export class BusinessReviewController {
     return this.service.listForModeration(req.user, query);
   }
 
-  // تایید یا رد کردن نظر
+  // تغییر وضعیت نظر: در انتظار بررسی / تاییدشده / رد شده
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Owner, Role.Admin)
   @Patch('reviews/:id/status')
-  async setApproval(
+  async setStatus(
     @Param('id') id: string,
     @Body() dto: UpdateReviewStatusDto,
     @Req() req: { user: { sub: string; role: Role } },
   ) {
-    return this.service.setApproval(id, dto.isApproved, req.user);
+    return this.service.setStatus(id, dto.status, req.user);
   }
 
   // Update a review (only owner of review)

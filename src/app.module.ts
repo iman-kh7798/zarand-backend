@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { BusinessModule } from './business/business.module';
@@ -22,6 +24,10 @@ import { winstonConfig } from './config/winston.config';
 
 @Module({
   imports: [
+    // محدودیت نرخ درخواست (ضد اسپم / brute-force). سقف سراسری ملایم است تا
+    // استفاده‌ی عادی API را محدود نکند؛ مسیرهای حساس (auth، فرم‌های عمومی)
+    // با @Throttle در کنترلر خودشان سخت‌گیرانه‌تر تنظیم شده‌اند.
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }]),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'uploads'),
       serveRoot: '/uploads',
@@ -44,6 +50,10 @@ import { winstonConfig } from './config/winston.config';
     // FavoriteBusinessModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // گارد throttler به‌صورت سراسری روی همه‌ی مسیرها اعمال می‌شود
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}
