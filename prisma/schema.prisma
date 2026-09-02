@@ -67,6 +67,7 @@ model Business {
   lng             Decimal?             @db.Decimal(10, 7)
   businessReviews BusinessReview[]
   socialLinks     BusinessSocialLink[]
+  reports         BusinessReport[]
 
   @@index([status, createdAt])
   @@index([ownerId, status])
@@ -351,4 +352,35 @@ model Feedback {
   createdAt DateTime @default(now())
 
   @@index([isRead, createdAt])
+}
+
+/// نوع مشکلی که کاربر برای اطلاعات یک کسب‌وکار گزارش می‌کند
+enum BusinessReportType {
+  INCORRECT_INFO // اطلاعات نادرست است
+  BUSINESS_CLOSED // کسب‌وکار تعطیل شده است
+  DUPLICATE // مورد تکراری است
+  OTHER // موضوع دیگر
+}
+
+/// وضعیت رسیدگی به گزارش
+enum BusinessReportStatus {
+  PENDING // بررسی‌نشده
+  RESOLVED // رسیدگی‌شده
+  REJECTED // رد شده
+}
+
+/// گزارش «اصلاح اطلاعات» یک کسب‌وکار — فرم عمومی، بدون نیاز به لاگین
+model BusinessReport {
+  id          String               @id @default(uuid()) @db.Char(36)
+  businessId  String               @db.Char(36)
+  business    Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type        BusinessReportType
+  description String?              @db.Text // برای «تعطیل شده» و «تکراری» اختیاری است
+  status      BusinessReportStatus @default(PENDING)
+  isRead      Boolean              @default(false) // آیا ادمین/مالک آن را دیده است
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([businessId, createdAt])
+  @@index([status, createdAt])
 }

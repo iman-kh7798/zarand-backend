@@ -22,4 +22,22 @@ export class SmsService {
     });
     console.log(`Sent verification code to ${phone}: ${code}`);
   }
+
+  /**
+   * به مالک کسب‌وکار خبر می‌دهد که برای کسب‌وکارش گزارش اصلاح اطلاعات ثبت شده.
+   * سرویس پیامک هنوز کامل وصل نیست؛ این متد best-effort است و خطا را می‌بلعد
+   * تا نبودِ تنظیمات پیامک، ثبت گزارش را با شکست مواجه نکند.
+   */
+  sendBusinessReportNotice(phone: string, businessTitle: string) {
+    try {
+      const sender = process.env.KAVENEGAR_SENDER || '10008663';
+      const message = `یک گزارش اصلاح اطلاعات برای کسب‌وکار «${businessTitle}» ثبت شد. برای بررسی به پنل مراجعه کنید.`;
+      this.kavenegar.Send({ message, sender, receptor: phone });
+      console.log(
+        `Sent business-report notice to ${phone} for "${businessTitle}"`,
+      );
+    } catch (e) {
+      console.error('sendBusinessReportNotice failed', e);
+    }
+  }
 }

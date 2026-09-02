@@ -43,6 +43,7 @@ src/
   business/          project core — largest service (~433 lines)
   business-image/    business images
   business-review/   business rating & review + approval flow (business/:id/reviews and reviews/*)
+  business-report/   public "fix business info" reports (business-reports/*) — admin + owner (own only)
   categories/        tree categories + link to business
   favorite-business/ favorites (module not enabled in app.module; its service is used directly)
   products/, product-image/  code exists but module not registered → these routes are inactive
@@ -107,7 +108,7 @@ Token payload: `{ sub, phone, role, name }`.
 
 - `prisma/schema.prisma` — `datasource db` has **no `url`**; the connection goes through the `@prisma/adapter-mariadb` driver adapter in `PrismaService` using env vars `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME`. `DATABASE_URL` is only needed for the CLI (in `prisma.config.ts`).
   - Both paths (`PrismaService` and `seed.ts`) fall back to `localhost:3306`. Make sure `DATABASE_URL` and `DATABASE_HOST` point to the same server.
-- Models: `Role, User, Business, BusinessSocialLink, FavoriteBusiness, Category, Product, ProductImage, BusinessImage, ProductVariant, Order, OrderItem, Review, BusinessReview, StockReservation, AuditLog, Otp, Feedback`.
+- Models: `Role, User, Business, BusinessSocialLink, FavoriteBusiness, Category, Product, ProductImage, BusinessImage, ProductVariant, Order, OrderItem, Review, BusinessReview, StockReservation, AuditLog, Otp, Feedback, BusinessReport`.
   - Order/cart (`Order`, `OrderItem`, `StockReservation`) exist in the schema but have **no module/route**.
 - Keys: `String @db.Char(36)` with `uuid()`; `Role.id` is an integer (1=ADMIN, 2=OWNER, 3=USER per `seed.ts`).
 - `Business.status`: `PENDING | APPROVED | REJECTED`. Anonymous users only see `APPROVED`.
@@ -139,6 +140,10 @@ Token payload: `{ sub, phone, role, name }`.
 | `role`                                                                               | GET                  | ADMIN                                                              |
 | `feedback`                                                                           | POST                 | public — site suggestion/feedback form (name, contact?, message)   |
 | `feedback`, `feedback/:id`, `feedback/:id/read`                                       | GET / PATCH / DELETE | ADMIN — list (take/skip/lastId/search/isRead), view, mark read, delete |
+| `business-reports`                                                                   | POST                 | public — "fix business info" form (`businessId`, `type`, `description?`); `description` required unless `type` is `BUSINESS_CLOSED`/`DUPLICATE`; texts the business owner (best-effort) |
+| `business-reports`, `business-reports/:id`                                            | GET                  | ADMIN (all) / OWNER (own businesses only) — filters take/skip/lastId/businessId/type/status/isRead/search |
+| `business-reports/:id/status`, `business-reports/:id/read`                            | PATCH                | ADMIN / OWNER (own business) — set status (`PENDING`/`RESOLVED`/`REJECTED`) or read flag |
+| `business-reports/:id`                                                               | DELETE               | ADMIN                                                              |
 | `favorite-businesses/*`                                                              | —                    | logged in (module not registered)                                  |
 | `products/*`, `product-image/*`                                                      | —                    | **inactive** (module commented out in app.module)                  |
 
@@ -179,3 +184,4 @@ Token secret and expiry come from env (`JWT_SECRET` is required — the app fail
 - The `USER` role was fully removed (enum, all `@Roles`, seed, and DB via migration).
 - Review approval flow was added: `isApproved`/`approvedAt` on `BusinessReview`, management list `GET /reviews`, and `PATCH /reviews/:id/status`.
 - `reviewsAverage` / `reviewsCount` added to all business lists (`BusinessService.listBusinesses`, `getFavorites`, and `CategoriesService` lists). The four methods `findAll/findByStatus/findPerOwner/findPerOwnerByStatus` were unified onto the private `listBusinesses` helper.
+- `business-report` module added: `BusinessReport` model + `BusinessReportType` (`INCORRECT_INFO`/`BUSINESS_CLOSED`/`DUPLICATE`/`OTHER`) & `BusinessReportStatus` (`PENDING`/`RESOLVED`/`REJECTED`) enums, migration `20260902150406_add_business_report`. Public `POST /business-reports`; ADMIN sees all, OWNER only reports for their own businesses (`NOT_YOUR_BUSINESS_REPORT`). `description` is required for `INCORRECT_INFO`/`OTHER` only (`@ValidateIf`). On create, `SmsService.sendBusinessReportNotice` texts the owner — best-effort, swallows errors since SMS isn't fully wired.
