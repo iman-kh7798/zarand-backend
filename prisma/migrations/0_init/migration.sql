@@ -40,10 +40,25 @@ CREATE TABLE `Business` (
     `status` ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
     `imageId` CHAR(36) NULL,
     `categoryId` CHAR(36) NULL,
+    `lat` DECIMAL(10, 7) NULL,
+    `lng` DECIMAL(10, 7) NULL,
 
-    INDEX `Business_status_idx`(`status`),
+    INDEX `Business_status_createdAt_idx`(`status`, `createdAt`),
     INDEX `Business_ownerId_status_idx`(`ownerId`, `status`),
-    INDEX `Business_categoryId_idx`(`categoryId`),
+    INDEX `Business_categoryId_status_idx`(`categoryId`, `status`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `BusinessSocialLink` (
+    `id` CHAR(36) NOT NULL,
+    `businessId` CHAR(36) NOT NULL,
+    `platform` ENUM('INSTAGRAM', 'TELEGRAM', 'WHATSAPP', 'TWITTER', 'LINKEDIN', 'FACEBOOK', 'YOUTUBE', 'WEBSITE', 'EITAA', 'BALE', 'RUBIKA') NOT NULL,
+    `url` VARCHAR(191) NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    INDEX `BusinessSocialLink_businessId_idx`(`businessId`),
+    UNIQUE INDEX `BusinessSocialLink_businessId_platform_key`(`businessId`, `platform`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -73,6 +88,7 @@ CREATE TABLE `Category` (
     `coverImageUrl` VARCHAR(191) NULL,
 
     UNIQUE INDEX `Category_slug_key`(`slug`),
+    INDEX `Category_slug_idx`(`slug`),
     INDEX `Category_parentId_fkey`(`parentId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -203,6 +219,27 @@ CREATE TABLE `Review` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `BusinessReview` (
+    `id` CHAR(36) NOT NULL,
+    `rating` INTEGER NULL,
+    `body` VARCHAR(191) NULL,
+    `isApproved` BOOLEAN NOT NULL DEFAULT false,
+    `approvedAt` DATETIME(3) NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `businessId` CHAR(36) NOT NULL,
+    `userId` CHAR(36) NOT NULL,
+    `parentId` CHAR(36) NULL,
+
+    INDEX `BusinessReview_businessId_idx`(`businessId`),
+    INDEX `BusinessReview_userId_idx`(`userId`),
+    INDEX `BusinessReview_parentId_idx`(`parentId`),
+    INDEX `BusinessReview_businessId_isApproved_idx`(`businessId`, `isApproved`),
+    INDEX `BusinessReview_businessId_parentId_isApproved_idx`(`businessId`, `parentId`, `isApproved`),
+    INDEX `BusinessReview_isApproved_createdAt_idx`(`isApproved`, `createdAt`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `StockReservation` (
     `id` CHAR(36) NOT NULL,
     `quantity` INTEGER NOT NULL,
@@ -247,34 +284,6 @@ CREATE TABLE `Otp` (
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- CreateTable
-CREATE TABLE `BusinessSocialLink` (
-    `id` CHAR(36) NOT NULL,
-    `businessId` CHAR(36) NOT NULL,
-    `platform` ENUM('INSTAGRAM', 'TELEGRAM', 'WHATSAPP', 'TWITTER', 'LINKEDIN', 'FACEBOOK', 'YOUTUBE', 'WEBSITE', 'EITAA', 'BALE', 'RUBIKA') NOT NULL,
-    `url` VARCHAR(191) NOT NULL,
-    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-
-    INDEX `BusinessSocialLink_businessId_idx`(`businessId`),
-    UNIQUE INDEX `BusinessSocialLink_businessId_platform_key`(`businessId`, `platform`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `BusinessReview` (
-    `id` CHAR(36) NOT NULL,
-    `rating` INTEGER NOT NULL,
-    `body` VARCHAR(191) NULL,
-    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `businessId` CHAR(36) NOT NULL,
-    `userId` CHAR(36) NOT NULL,
-
-    INDEX `BusinessReview_businessId_idx`(`businessId`),
-    INDEX `BusinessReview_userId_idx`(`userId`),
-    UNIQUE INDEX `BusinessReview_businessId_userId_key`(`businessId`, `userId`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
 -- AddForeignKey
 ALTER TABLE `User` ADD CONSTRAINT `User_roleId_fkey` FOREIGN KEY (`roleId`) REFERENCES `Role`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
@@ -283,6 +292,9 @@ ALTER TABLE `Business` ADD CONSTRAINT `Business_categoryId_fkey` FOREIGN KEY (`c
 
 -- AddForeignKey
 ALTER TABLE `Business` ADD CONSTRAINT `Business_ownerId_fkey` FOREIGN KEY (`ownerId`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `BusinessSocialLink` ADD CONSTRAINT `BusinessSocialLink_businessId_fkey` FOREIGN KEY (`businessId`) REFERENCES `Business`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `FavoriteBusiness` ADD CONSTRAINT `FavoriteBusiness_businessId_fkey` FOREIGN KEY (`businessId`) REFERENCES `Business`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
@@ -327,6 +339,15 @@ ALTER TABLE `Review` ADD CONSTRAINT `Review_productId_fkey` FOREIGN KEY (`produc
 ALTER TABLE `Review` ADD CONSTRAINT `Review_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `BusinessReview` ADD CONSTRAINT `BusinessReview_businessId_fkey` FOREIGN KEY (`businessId`) REFERENCES `Business`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `BusinessReview` ADD CONSTRAINT `BusinessReview_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `BusinessReview` ADD CONSTRAINT `BusinessReview_parentId_fkey` FOREIGN KEY (`parentId`) REFERENCES `BusinessReview`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `StockReservation` ADD CONSTRAINT `StockReservation_orderId_fkey` FOREIGN KEY (`orderId`) REFERENCES `Order`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -340,13 +361,4 @@ ALTER TABLE `StockReservation` ADD CONSTRAINT `StockReservation_variantId_fkey` 
 
 -- AddForeignKey
 ALTER TABLE `AuditLog` ADD CONSTRAINT `AuditLog_performedById_fkey` FOREIGN KEY (`performedById`) REFERENCES `User`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `BusinessSocialLink` ADD CONSTRAINT `BusinessSocialLink_businessId_fkey` FOREIGN KEY (`businessId`) REFERENCES `Business`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `BusinessReview` ADD CONSTRAINT `BusinessReview_businessId_fkey` FOREIGN KEY (`businessId`) REFERENCES `Business`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `BusinessReview` ADD CONSTRAINT `BusinessReview_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
