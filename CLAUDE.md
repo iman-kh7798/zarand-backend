@@ -119,26 +119,26 @@ Token payload: `{ sub, phone, role, name }`.
 
 ## Route map (summary)
 
-| Path | Method | Access |
-|---|---|---|
-| `auth/send-phone`, `auth/verify-code` | POST | public |
-| `business` | GET | Optional auth — anon sees only APPROVED; OWNER sees only their own |
-| `business` | POST | OWNER (multipart, up to 10 images) |
-| `business/:id` | GET / PATCH / DELETE | Optional / ADMIN+OWNER |
-| `business/:id/status` | PATCH | ADMIN |
-| `business/:id/upload-images`, `:businessId/image/:imageId` | POST/PATCH/DELETE | OWNER |
-| `business/:id/favorite`, `business/favorites/me` | POST/DELETE/GET | logged in |
-| `business/:businessId/reviews` | POST | logged in |
-| `business/:businessId/reviews` | GET | public — only approved (+ the logged-in user's own review) |
-| `reviews` | GET | OWNER (own business only) / ADMIN (all) — management list |
-| `reviews/:id/status` | PATCH | OWNER (own business) / ADMIN — approve or reject |
-| `reviews/:id` | PUT / DELETE | only the review's own author |
-| `categories`, `categories/:id`, `categories/slug/:slug`, `categories/:id/businesses` | GET | public |
-| `categories` (POST/PATCH/DELETE), `categories/business/set` | — | ADMIN (setting a category: ADMIN+OWNER) |
-| `users` CRUD | — | ADMIN; `users/profile` (GET/POST) for all logged-in users |
-| `role` | GET | ADMIN |
-| `favorite-businesses/*` | — | logged in (module not registered) |
-| `products/*`, `product-image/*` | — | **inactive** (module commented out in app.module) |
+| Path                                                                                 | Method               | Access                                                             |
+| ------------------------------------------------------------------------------------ | -------------------- | ------------------------------------------------------------------ |
+| `auth/send-phone`, `auth/verify-code`                                                | POST                 | public                                                             |
+| `business`                                                                           | GET                  | Optional auth — anon sees only APPROVED; OWNER sees only their own |
+| `business`                                                                           | POST                 | OWNER (multipart, up to 10 images)                                 |
+| `business/:id`                                                                       | GET / PATCH / DELETE | Optional / ADMIN+OWNER                                             |
+| `business/:id/status`                                                                | PATCH                | ADMIN                                                              |
+| `business/:id/upload-images`, `:businessId/image/:imageId`                           | POST/PATCH/DELETE    | OWNER                                                              |
+| `business/:id/favorite`, `business/favorites/me`                                     | POST/DELETE/GET      | logged in                                                          |
+| `business/:businessId/reviews`                                                       | POST                 | logged in                                                          |
+| `business/:businessId/reviews`                                                       | GET                  | public — only approved (+ the logged-in user's own review)         |
+| `reviews`                                                                            | GET                  | OWNER (own business only) / ADMIN (all) — management list          |
+| `reviews/:id/status`                                                                 | PATCH                | OWNER (own business) / ADMIN — approve or reject                   |
+| `reviews/:id`                                                                        | PUT / DELETE         | only the review's own author                                       |
+| `categories`, `categories/:id`, `categories/slug/:slug`, `categories/:id/businesses` | GET                  | public                                                             |
+| `categories` (POST/PATCH/DELETE), `categories/business/set`                          | —                    | ADMIN (setting a category: ADMIN+OWNER)                            |
+| `users` CRUD                                                                         | —                    | ADMIN; `users/profile` (GET/POST) for all logged-in users          |
+| `role`                                                                               | GET                  | ADMIN                                                              |
+| `favorite-businesses/*`                                                              | —                    | logged in (module not registered)                                  |
+| `products/*`, `product-image/*`                                                      | —                    | **inactive** (module commented out in app.module)                  |
 
 ## Auth (OTP flow)
 
