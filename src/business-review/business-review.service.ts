@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -24,14 +25,46 @@ export class BusinessReviewService {
   ) {
     const business = await this.prisma.business.findUnique({
       where: { id: businessId },
+      select: { id: true, ownerId: true },
     });
     if (!business) throw new NotFoundException('BUSINESS_NOT_FOUND');
+
+    // ---- حالت «پاسخ» به یک نظر موجود ----
+    if (dto.parentId) {
+      const parent = await this.prisma.businessReview.findUnique({
+        where: { id: dto.parentId },
+        select: { id: true, businessId: true, parentId: true },
+      });
+      if (!parent || parent.businessId !== businessId) {
+        throw new NotFoundException('PARENT_REVIEW_NOT_FOUND');
+      }
+      // فقط یک سطح: نمی‌توان به یک پاسخ، پاسخ داد
+      if (parent.parentId) {
+        throw new BadRequestException('MAX_REPLY_DEPTH_EXCEEDED');
+      }
+      if (!dto.body?.trim()) throw new BadRequestException('BODY_REQUIRED');
+
+      // مالک کسب‌وکار هم مجاز است به نظرها پاسخ بدهد
+      return this.prisma.businessReview.create({
+        data: {
+          body: dto.body,
+          businessId,
+          userId,
+          parentId: parent.id,
+        },
+      });
+    }
+
+    // ---- حالت نظر ریشه ----
     if (business.ownerId === userId) {
       throw new ForbiddenException('CANNOT_REVIEW_OWN_BUSINESS');
     }
-    // check if already reviewed
-    const existing = await this.prisma.businessReview.findUnique({
-      where: { businessId_userId: { businessId, userId } },
+    if (dto.rating == null) throw new BadRequestException('RATING_REQUIRED');
+
+    // هر کاربر فقط یک نظر ریشه به‌ازای هر کسب‌وکار دارد
+    const existing = await this.prisma.businessReview.findFirst({
+      where: { businessId, userId, parentId: null },
+      select: { id: true },
     });
     if (existing) {
       // ویرایش نظر، آن را دوباره به حالت در انتظار تایید برمی‌گرداند
@@ -83,7 +116,11 @@ export class BusinessReviewService {
     });
     if (!review) throw new NotFoundException('REVIEW_NOT_FOUND');
     if (review.userId !== userId) throw new ForbiddenException();
-    await this.prisma.businessReview.delete({ where: { id } });
+    // حذف نظر ریشه، پاسخ‌هایش را هم پاک می‌کند (بدون اتکا به رفتار cascade خودارجاع در MySQL)
+    await this.prisma.$transaction([
+      this.prisma.businessReview.deleteMany({ where: { parentId: id } }),
+      this.prisma.businessReview.delete({ where: { id } }),
+    ]);
     return { success: true };
   }
 
@@ -172,7 +209,12 @@ export class BusinessReviewService {
 
     const grouped = await this.prisma.businessReview.groupBy({
       by: ['businessId'],
-      where: { businessId: { in: businessIds }, isApproved: true },
+      // فقط نظرهای ریشه‌ی تاییدشده در آمار حساب می‌شوند (پاسخ‌ها rating ندارند)
+      where: {
+        businessId: { in: businessIds },
+        isApproved: true,
+        parentId: null,
+      },
       _avg: { rating: true },
       _count: { _all: true },
     });
@@ -210,22 +252,42 @@ export class BusinessReviewService {
       ? { businessId, OR: [{ isApproved: true }, { userId: viewerId }] }
       : { businessId, isApproved: true };
 
-    const [agg, reviews] = await Promise.all([
+    const [agg, rows] = await Promise.all([
       this.prisma.businessReview.aggregate({
-        where: { businessId, isApproved: true },
+        // میانگین و تعداد فقط از روی نظرهای ریشه‌ی تاییدشده
+        where: { businessId, isApproved: true, parentId: null },
         _avg: { rating: true },
         _count: { _all: true },
       }),
       this.prisma.businessReview.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        // صعودی تا ساخت درخت در حافظه ساده باشد
+        orderBy: { createdAt: 'asc' },
         include: { user: { select: { id: true, name: true, phone: true } } },
       }),
     ]);
+
+    // ساخت درخت دو سطحی (نظر ریشه + پاسخ‌ها) با یک پیمایش O(n) بدون کوئری اضافه
+    type Node = (typeof rows)[number] & { replies: Node[] };
+    const byId = new Map<string, Node>(
+      rows.map((r) => [r.id, { ...r, replies: [] }]),
+    );
+    const roots: Node[] = [];
+    for (const r of rows) {
+      const node = byId.get(r.id)!;
+      if (r.parentId) {
+        byId.get(r.parentId)?.replies.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
+    // نظرهای ریشه از جدید به قدیم؛ پاسخ‌ها از قدیم به جدید می‌مانند
+    roots.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
     return {
       average: agg._avg.rating ? Number(agg._avg.rating.toFixed(2)) : 0,
       count: agg._count._all ?? 0,
-      reviews,
+      reviews: roots,
     };
   }
 }

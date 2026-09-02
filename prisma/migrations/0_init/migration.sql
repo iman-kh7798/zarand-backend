@@ -247,6 +247,34 @@ CREATE TABLE `Otp` (
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+-- CreateTable
+CREATE TABLE `BusinessSocialLink` (
+    `id` CHAR(36) NOT NULL,
+    `businessId` CHAR(36) NOT NULL,
+    `platform` ENUM('INSTAGRAM', 'TELEGRAM', 'WHATSAPP', 'TWITTER', 'LINKEDIN', 'FACEBOOK', 'YOUTUBE', 'WEBSITE', 'EITAA', 'BALE', 'RUBIKA') NOT NULL,
+    `url` VARCHAR(191) NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    INDEX `BusinessSocialLink_businessId_idx`(`businessId`),
+    UNIQUE INDEX `BusinessSocialLink_businessId_platform_key`(`businessId`, `platform`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `BusinessReview` (
+    `id` CHAR(36) NOT NULL,
+    `rating` INTEGER NOT NULL,
+    `body` VARCHAR(191) NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `businessId` CHAR(36) NOT NULL,
+    `userId` CHAR(36) NOT NULL,
+
+    INDEX `BusinessReview_businessId_idx`(`businessId`),
+    INDEX `BusinessReview_userId_idx`(`userId`),
+    UNIQUE INDEX `BusinessReview_businessId_userId_key`(`businessId`, `userId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- AddForeignKey
 ALTER TABLE `User` ADD CONSTRAINT `User_roleId_fkey` FOREIGN KEY (`roleId`) REFERENCES `Role`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
@@ -312,4 +340,13 @@ ALTER TABLE `StockReservation` ADD CONSTRAINT `StockReservation_variantId_fkey` 
 
 -- AddForeignKey
 ALTER TABLE `AuditLog` ADD CONSTRAINT `AuditLog_performedById_fkey` FOREIGN KEY (`performedById`) REFERENCES `User`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `BusinessSocialLink` ADD CONSTRAINT `BusinessSocialLink_businessId_fkey` FOREIGN KEY (`businessId`) REFERENCES `Business`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `BusinessReview` ADD CONSTRAINT `BusinessReview_businessId_fkey` FOREIGN KEY (`businessId`) REFERENCES `Business`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `BusinessReview` ADD CONSTRAINT `BusinessReview_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 

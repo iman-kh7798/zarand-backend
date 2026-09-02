@@ -273,20 +273,25 @@ model Review {
 /// نظرات کسب‌وکار
 model BusinessReview {
   id         String    @id @default(uuid()) @db.Char(36)
-  rating     Int
+  rating     Int? // فقط برای نظر ریشه؛ برای پاسخ‌ها null است
   body       String?
   isApproved Boolean   @default(false)
   approvedAt DateTime?
   createdAt  DateTime  @default(now())
   businessId String    @db.Char(36)
   userId     String    @db.Char(36)
-  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  user       User      @relation(fields: [userId], references: [id])
+  parentId   String?   @db.Char(36) // اگر مقدار داشته باشد، این نظر یک «پاسخ» است (فقط یک سطح)
 
-  @@unique([businessId, userId])
+  business Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id])
+  parent   BusinessReview?  @relation("BusinessReviewReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  BusinessReview[] @relation("BusinessReviewReplies")
+
   @@index([businessId])
   @@index([userId])
+  @@index([parentId])
   @@index([businessId, isApproved])
+  @@index([businessId, parentId, isApproved])
   @@index([isApproved, createdAt])
 }
 

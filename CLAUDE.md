@@ -1,175 +1,179 @@
-# CLAUDE.md — راهنمای کار روی این مخزن
+# CLAUDE.md — working guide for this repo
 
-> فایل راهنمای داخلی برای Claude Code. هدف: بدون کاوش دوباره‌ی کل پروژه، سریع و مطابق کانونشن‌های موجود کد بزنم.
+> Internal guide for Claude Code. Goal: code fast and in line with existing conventions without re-exploring the whole project.
 
-## پروژه چیست
+## Searching the project
 
-`zarand-backend` — بک‌اند NestJS 11 + Prisma 7 (MySQL/MariaDB) برای یک دایرکتوری/مارکت‌پلیس محلی: کاربران، کسب‌وکارها (business)، دسته‌بندی‌ها، تصاویر، نظرات و علاقه‌مندی‌ها. احراز هویت با OTP پیامکی (Kavenegar) و JWT.
+This repo is indexed with `codebase-memory-mcp`. For any structural search (finding a symbol, callers/callees, following a call chain, impact analysis, architecture) use the graph tools **first**: `search_graph`, `trace_path`, `get_code_snippet`, `query_graph`, `get_architecture`. Fall back to `grep`/`search_code` only for free-text/non-code matches or when graph coverage is insufficient. The index auto-refreshes in the background; only call `index_repository` if the repo is not indexed.
 
-- زبان کد: TypeScript. کامنت‌ها اغلب فارسی‌اند — همین سبک را ادامه بده.
-- برنچ کاری: `dev` (برنچ اصلی: `master`). push روی `dev` باعث دیپلوی خودکار می‌شود (پایین را ببین).
+## What the project is
 
-## دستورهای پرکاربرد
+`zarand-backend` — NestJS 11 + Prisma 7 (MySQL/MariaDB) backend for a local directory/marketplace: users, businesses, categories, images, reviews and favorites. Auth via SMS OTP (Kavenegar) and JWT.
+
+- Code language: TypeScript. Code comments are mostly in Persian — keep that style.
+- Working branch: `dev` (main branch: `master`). Push to `dev` triggers auto-deploy (see below).
+
+## Common commands
 
 ```bash
-npm run start:dev      # اجرا با watch
+npm run start:dev      # watch mode
 npm run build          # nest build → dist/
 npm run start:prod     # node dist/src/main
 npm run lint           # eslint --fix
 npm run format         # prettier
-npm test               # jest (۷ فایل spec، اغلب اسکلت پیش‌فرض Nest)
+npm test               # jest (7 spec files, mostly default Nest skeletons)
 npm run generate       # prisma generate
 npm run push           # prisma db push
 npm run deploy         # prisma migrate deploy
-npm run seed           # ts-node seed.ts  (نقش‌ها + ادمین اولیه)
+npm run seed           # ts-node seed.ts  (roles + initial admin)
 ```
 
-Swagger روی `/api` بالا می‌آید (auth با `Bearer` و کلید `access-token`).
-فایل‌های آپلودشده به‌صورت استاتیک روی `/uploads` سرو می‌شوند.
+Swagger is served at `/api` (auth uses `Bearer` with key `access-token`).
+Uploaded files are served statically at `/uploads`.
 
-## ساختار
+## Structure
 
 ```
 src/
-  main.ts            bootstrap: Swagger + ValidationPipe سراسری + AllExceptionsFilter
-  app.module.ts      رجیستر ماژول‌ها (⚠️ ProductsModule و FavoriteBusinessModule کامنت‌اند)
-  auth/              OTP + JWT، AuthGuard، OptionalAuthGuard، constants (secret)
-  role/              Role enum (ADMIN | OWNER)، Roles decorator، RolesGuard، role controller/service
-  users/             CRUD کاربر + OTP (saveVerificationCode/findValidOtp/expireValidOtp)
-  business/          هسته‌ی پروژه — بزرگ‌ترین سرویس (~433 خط)
-  business-image/    تصاویر کسب‌وکار
-  business-review/   امتیاز و نظر کسب‌وکار + جریان تایید (business/:id/reviews و reviews/*)
-  categories/        دسته‌بندی درختی + اتصال به business
-  favorite-business/ علاقه‌مندی‌ها (ماژولش در app.module فعال نیست؛ سرویسش مستقیم استفاده می‌شود)
-  products/, product-image/  کد موجود ولی ماژولش رجیستر نشده → این روت‌ها فعال نیستند
-  upload/            نوشتن/حذف فایل روی دیسک (process.cwd()/uploads)
+  main.ts            bootstrap: Swagger + global ValidationPipe + AllExceptionsFilter
+  app.module.ts      module registration (⚠️ ProductsModule and FavoriteBusinessModule are commented out)
+  auth/              OTP + JWT, AuthGuard, OptionalAuthGuard, constants (secret)
+  role/              Role enum (ADMIN | OWNER), Roles decorator, RolesGuard, role controller/service
+  users/             user CRUD + OTP (saveVerificationCode/findValidOtp/expireValidOtp)
+  business/          project core — largest service (~433 lines)
+  business-image/    business images
+  business-review/   business rating & review + approval flow (business/:id/reviews and reviews/*)
+  categories/        tree categories + link to business
+  favorite-business/ favorites (module not enabled in app.module; its service is used directly)
+  products/, product-image/  code exists but module not registered → these routes are inactive
+  upload/            write/delete files on disk (process.cwd()/uploads)
   sms/               Kavenegar
   prisma/            PrismaService (driver adapter)
   common/dto/        PaginationDto (take/skip/lastId)
-  config/            winston (daily rotate: logs/error-*.log و logs/combined-*.log)
-  exception-filter/  AllExceptionsFilter — همه‌ی خطاها را در winston لاگ می‌کند
+  config/            winston (daily rotate: logs/error-*.log and logs/combined-*.log)
+  exception-filter/  AllExceptionsFilter — logs every error to winston
 ```
 
-## کانونشن‌هایی که باید رعایت کنم
+## Conventions to follow
 
-**۱. الگوی ماژول:** هر فیچر = `x.module.ts` + `x.controller.ts` + `x.service.ts` + `dto/create-x.dto.ts` + `dto/update-x.dto.ts` (با `PartialType` از `@nestjs/mapped-types`). سرویس‌ها `PrismaService` را مستقیم تزریق می‌کنند؛ لایه‌ی repository جدا وجود ندارد.
+**1. Module pattern:** each feature = `x.module.ts` + `x.controller.ts` + `x.service.ts` + `dto/create-x.dto.ts` + `dto/update-x.dto.ts` (with `PartialType` from `@nestjs/mapped-types`). Services inject `PrismaService` directly; there is no separate repository layer.
 
-**۲. ایمپورت‌ها:** مسیر مطلق با پیشوند `src/` (مثل `import { AuthGuard } from 'src/auth/auth.guard'`)، نه alias مثل `@/`.
+**2. Imports:** absolute paths with `src/` prefix (e.g. `import { AuthGuard } from 'src/auth/auth.guard'`), not aliases like `@/`.
 
-**۰. نقش‌ها فقط دو تاست: `ADMIN` و `OWNER`.** نقش `USER` کاملاً حذف شده — نه در enum هست، نه در seed، نه در دیتابیس. هر کسی ثبت‌نام کند `OWNER` می‌شود (`roleId: 2` در `auth.service.ts`). هیچ‌وقت `Role.User` را برنگردان.
+**3. Roles are only two: `ADMIN` and `OWNER`.** The `USER` role is fully removed — not in the enum, not in seed, not in the DB. Anyone who signs up becomes `OWNER` (`roleId: 2` in `auth.service.ts`). Never return `Role.User`.
 
-**۳. گاردها — مهم:** `RolesGuard` خودش توکن را چک نمی‌کند، فقط `request.user.role` را با متادیتای `Roles()` مقایسه می‌کند. پس همیشه:
+**4. Guards — important:** `RolesGuard` does not check the token itself, it only compares `request.user.role` against `Roles()` metadata. So always:
 
 ```ts
 @ApiBearerAuth('access-token')
-@UseGuards(AuthGuard, RolesGuard)   // ترتیب مهم است
+@UseGuards(AuthGuard, RolesGuard)   // order matters
 @Roles(Role.Admin, Role.Owner)
 ```
 
-برای روت‌های عمومی که با لاگین رفتار متفاوتی دارند از `OptionalAuthGuard` استفاده می‌شود (توکن نامعتبر بلاک نمی‌کند، فقط `req.user` ست نمی‌شود).
-`Roles(...)` بدون `RolesGuard` هیچ اثری ندارد — چند جا (مثل `business/favorites/me`) همین‌طور است؛ اگر جایی چنین دیدی عمداً تغییرش نده مگر خواسته شود.
+For public routes that behave differently when logged in, use `OptionalAuthGuard` (an invalid token does not block, it just leaves `req.user` unset).
+`Roles(...)` without `RolesGuard` has no effect — this is the case in a few places (e.g. `business/favorites/me`); if you see this, don't change it intentionally unless asked.
 
-**۴. کاربر جاری:** دکوریتور اختصاصی نداریم. الگوی رایج:
+**5. Current user:** no dedicated decorator. Common pattern:
 
 ```ts
 @Req() req: { user: { sub: string; role: Role } }
 const userId = req.user.sub;   // sub = user.id (uuid)
 ```
 
-payload توکن: `{ sub, phone, role, name }`.
+Token payload: `{ sub, phone, role, name }`.
 
-**۵. ValidationPipe سراسری** با `whitelist + forbidNonWhitelisted + transform`:
+**6. Global ValidationPipe** with `whitelist + forbidNonWhitelisted + transform`:
 
-- هر فیلدی که در DTO تعریف نشده باشد → ۴۰۰. پس موقع افزودن فیلد جدید حتماً DTO را آپدیت کن.
-- ورودی‌های multipart همه رشته‌اند → در DTOها از `@IsNumberString()` برای `phone`/`lat`/`lng` استفاده شده. همین را ادامه بده.
-- شماره موبایل: `@Matches(/^(\+98|0098|0)?9\d{9}$/)`.
+- Any field not defined in the DTO → 400. So always update the DTO when adding a new field.
+- multipart inputs are all strings → DTOs use `@IsNumberString()` for `phone`/`lat`/`lng`. Keep doing that.
+- Phone number: `@Matches(/^(\+98|0098|0)?9\d{9}$/)`.
 
-**۶. پیام خطاها کد UPPER_SNAKE هستند**، نه جمله‌ی انسانی: `PHONE_EXISTS`, `INVALID_OR_EXPIRED_CODE`, `BUSINESS_IMAGE_LIMIT_EXCEEDED`, `DUPLICATE_SOCIAL_PLATFORM`, `USER_NOT_EXISTS`. برای خطاهای جدید همین سبک را نگه دار.
+**7. Error messages are UPPER_SNAKE codes**, not human sentences: `PHONE_EXISTS`, `INVALID_OR_EXPIRED_CODE`, `BUSINESS_IMAGE_LIMIT_EXCEEDED`, `DUPLICATE_SOCIAL_PLATFORM`, `USER_NOT_EXISTS`. Keep this style for new errors.
 
-**۷. خطاهای Prisma دستی map می‌شوند** داخل `try/catch` سرویس:
-`P2002` → `BadRequestException` (یکتایی)، `P2025` → `NotFoundException`، `P2003` → کلید خارجی.
+**8. Prisma errors are mapped manually** inside the service `try/catch`:
+`P2002` → `BadRequestException` (uniqueness), `P2025` → `NotFoundException`, `P2003` → foreign key.
 
-**۸. آپلود فایل:** کنترلر با `FileInterceptor`/`FilesInterceptor` + `ParseFilePipe` (سقف ۵MB، `jpeg|jpg|png`) فایل می‌گیرد، `UploadService.create(Many)` روی دیسک می‌نویسد و `{ filename, path }` برمی‌گرداند (`path` = `/uploads/...`). **اگر عملیات دیتابیس شکست خورد حتماً `uploadService.removeMany(...)` را صدا بزن** — این الگوی جبران در `business.service` و `categories.service` رعایت شده. سقف تصاویر هر business = ۱۰.
+**9. File upload:** the controller takes files with `FileInterceptor`/`FilesInterceptor` + `ParseFilePipe` (max 5MB, `jpeg|jpg|png`), `UploadService.create(Many)` writes to disk and returns `{ filename, path }` (`path` = `/uploads/...`). **If the DB operation fails you must call `uploadService.removeMany(...)`** — this compensation pattern is followed in `business.service` and `categories.service`. Image limit per business = 10.
 
-**۹. صفحه‌بندی:** `take`/`skip` + `lastId` به‌عنوان cursor؛ پاسخ به شکل `{ items, page: { total, take, skip } }`.
+**10. Pagination:** `take`/`skip` + `lastId` as cursor; response shape `{ items, page: { total, take, skip } }`.
 
-**۱۰. جریان تایید نظرها:** `BusinessReview.isApproved` پیش‌فرض `false` است. نظر جدید — و هر **ویرایش** نظر — به حالت در انتظار تایید برمی‌گردد (`isApproved: false`, `approvedAt: null`). فقط `OWNER` کسب‌وکار مربوطه و `ADMIN` می‌توانند تایید کنند. هر کوئری‌ای که آمار یا لیست عمومی نظر می‌دهد **باید** `isApproved: true` را فیلتر کند.
+**11. Review approval flow:** `BusinessReview.isApproved` defaults to `false`. A new review — and every **edit** of a review — goes back to pending (`isApproved: false`, `approvedAt: null`). Only the `OWNER` of the related business and `ADMIN` can approve. Every query that returns public review stats or lists **must** filter `isApproved: true`.
 
-**۱۱. آمار نظرات در لیست کسب‌وکارها:** هر جا لیستی از business برگردانده می‌شود باید `reviewsAverage` و `reviewsCount` هم داشته باشد. برای این کار از `BusinessReviewService.withStats(rows)` استفاده کن (یا `getStatsFor(ids)` اگر ساختار تودرتو است) — با یک `groupBy` برای کل لیست کار می‌کند، پس داخل `map` صدایش نزن. اگر لیست جدیدی اضافه کردی، همین کار را برایش انجام بده.
+**12. Review stats in business lists:** wherever a list of businesses is returned it must also include `reviewsAverage` and `reviewsCount`. Use `BusinessReviewService.withStats(rows)` (or `getStatsFor(ids)` for nested structures) — it works with one `groupBy` for the whole list, so don't call it inside a `map`. If you add a new list, do the same for it.
 
-**۱۲. هرگز `passwordHash` را برنگردان** — در `users.service` با destructuring حذف می‌شود.
+**13. Never return `passwordHash`** — it is stripped via destructuring in `users.service`.
 
-## دیتابیس / Prisma
+## Database / Prisma
 
-- `prisma/schema.prisma` — `datasource db` **بدون `url`** است؛ اتصال از طریق driver adapter `@prisma/adapter-mariadb` در `PrismaService` با env های `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME` انجام می‌شود. `DATABASE_URL` فقط برای CLI (در `prisma.config.ts`) لازم است.
-  - هر دو مسیر (`PrismaService` و `seed.ts`) fallback به `localhost:3306` دارند. دقت کن `DATABASE_URL` و `DATABASE_HOST` به یک سرور اشاره کنند.
-- مدل‌ها: `Role, User, Business, BusinessSocialLink, FavoriteBusiness, Category, Product, ProductImage, BusinessImage, ProductVariant, Order, OrderItem, Review, BusinessReview, StockReservation, AuditLog, Otp`.
-  - سفارش/سبد خرید (`Order`, `OrderItem`, `StockReservation`) در اسکیما هست ولی **هیچ ماژول/روتی برایش وجود ندارد**.
-- کلیدها: `String @db.Char(36)` با `uuid()`؛ `Role.id` عدد صحیح است (۱=ADMIN، ۲=OWNER، ۳=USER طبق `seed.ts`).
-- `Business.status`: `PENDING | APPROVED | REJECTED`. کاربر ناشناس فقط `APPROVED` می‌بیند.
-- بعد از تغییر اسکیما: `npx prisma migrate dev --name ...` سپس `npm run generate`.
-- مایگریشن‌ها: `0_init` و `20260827120000_review_approval_and_remove_user_role`.
-- ⚠️ دیتابیس از محیط توسعه‌ی من در دسترس نیست، پس `migrate dev` قابل اجرا نیست. برای ساخت مایگریشن جدید بدون دیتابیس:
-  `npx prisma migrate diff --from-schema <اسکیمای-قبلی> --to-schema prisma/schema.prisma --script`
-  (در Prisma 7 فلگ‌ها `--from-schema`/`--to-schema` هستند، نه `--from-schema-datamodel`.)
+- `prisma/schema.prisma` — `datasource db` has **no `url`**; the connection goes through the `@prisma/adapter-mariadb` driver adapter in `PrismaService` using env vars `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME`. `DATABASE_URL` is only needed for the CLI (in `prisma.config.ts`).
+  - Both paths (`PrismaService` and `seed.ts`) fall back to `localhost:3306`. Make sure `DATABASE_URL` and `DATABASE_HOST` point to the same server.
+- Models: `Role, User, Business, BusinessSocialLink, FavoriteBusiness, Category, Product, ProductImage, BusinessImage, ProductVariant, Order, OrderItem, Review, BusinessReview, StockReservation, AuditLog, Otp`.
+  - Order/cart (`Order`, `OrderItem`, `StockReservation`) exist in the schema but have **no module/route**.
+- Keys: `String @db.Char(36)` with `uuid()`; `Role.id` is an integer (1=ADMIN, 2=OWNER, 3=USER per `seed.ts`).
+- `Business.status`: `PENDING | APPROVED | REJECTED`. Anonymous users only see `APPROVED`.
+- After a schema change: `npx prisma migrate dev --name ...` then `npm run generate`.
+- Migrations: `0_init` and `20260827120000_review_approval_and_remove_user_role`.
+- ⚠️ The DB is not reachable from my dev environment, so `migrate dev` cannot run. To create a new migration without a DB:
+  `npx prisma migrate diff --from-schema <old-schema> --to-schema prisma/schema.prisma --script`
+  (in Prisma 7 the flags are `--from-schema`/`--to-schema`, not `--from-schema-datamodel`.)
 
-## نقشه‌ی روت‌ها (خلاصه)
+## Route map (summary)
 
-| مسیر | متد | دسترسی |
+| Path | Method | Access |
 |---|---|---|
-| `auth/send-phone`, `auth/verify-code` | POST | عمومی |
-| `business` | GET | Optional auth — ناشناس فقط APPROVED؛ OWNER فقط مال خودش |
-| `business` | POST | OWNER (multipart، تا ۱۰ عکس) |
+| `auth/send-phone`, `auth/verify-code` | POST | public |
+| `business` | GET | Optional auth — anon sees only APPROVED; OWNER sees only their own |
+| `business` | POST | OWNER (multipart, up to 10 images) |
 | `business/:id` | GET / PATCH / DELETE | Optional / ADMIN+OWNER |
 | `business/:id/status` | PATCH | ADMIN |
 | `business/:id/upload-images`, `:businessId/image/:imageId` | POST/PATCH/DELETE | OWNER |
-| `business/:id/favorite`, `business/favorites/me` | POST/DELETE/GET | لاگین |
-| `business/:businessId/reviews` | POST | لاگین |
-| `business/:businessId/reviews` | GET | عمومی — فقط تاییدشده‌ها (+ نظر خود کاربر لاگین‌کرده) |
-| `reviews` | GET | OWNER (فقط کسب‌وکار خودش) / ADMIN (همه) — لیست مدیریت |
-| `reviews/:id/status` | PATCH | OWNER (کسب‌وکار خودش) / ADMIN — تایید یا رد |
-| `reviews/:id` | PUT / DELETE | فقط صاحب همان نظر |
-| `categories`, `categories/:id`, `categories/slug/:slug`, `categories/:id/businesses` | GET | عمومی |
-| `categories` (POST/PATCH/DELETE), `categories/business/set` | — | ADMIN (ست‌کردن دسته: ADMIN+OWNER) |
-| `users` CRUD | — | ADMIN؛ `users/profile` (GET/POST) برای همه‌ی لاگین‌شده‌ها |
+| `business/:id/favorite`, `business/favorites/me` | POST/DELETE/GET | logged in |
+| `business/:businessId/reviews` | POST | logged in |
+| `business/:businessId/reviews` | GET | public — only approved (+ the logged-in user's own review) |
+| `reviews` | GET | OWNER (own business only) / ADMIN (all) — management list |
+| `reviews/:id/status` | PATCH | OWNER (own business) / ADMIN — approve or reject |
+| `reviews/:id` | PUT / DELETE | only the review's own author |
+| `categories`, `categories/:id`, `categories/slug/:slug`, `categories/:id/businesses` | GET | public |
+| `categories` (POST/PATCH/DELETE), `categories/business/set` | — | ADMIN (setting a category: ADMIN+OWNER) |
+| `users` CRUD | — | ADMIN; `users/profile` (GET/POST) for all logged-in users |
 | `role` | GET | ADMIN |
-| `favorite-businesses/*` | — | لاگین (ماژول رجیستر نشده) |
-| `products/*`, `product-image/*` | — | **غیرفعال** (ماژول در app.module کامنت است) |
+| `favorite-businesses/*` | — | logged in (module not registered) |
+| `products/*`, `product-image/*` | — | **inactive** (module commented out in app.module) |
 
-## احراز هویت (جریان OTP)
+## Auth (OTP flow)
 
-`send-phone` → کد ۶ رقمی در جدول `Otp` ذخیره و پیامک می‌شود → `verify-code` → اگر کاربر نبود ساخته می‌شود (`roleId: 2` = OWNER) و `{ access_token, isNewUser }` برمی‌گردد.
-شماره‌های تست در `auth.service.ts` (`testPhone`) با کد ثابت `123456` بدون پیامک کار می‌کنند.
+`send-phone` → a 6-digit code is stored in the `Otp` table and texted → `verify-code` → if the user didn't exist they are created (`roleId: 2` = OWNER) and `{ access_token, isNewUser }` is returned.
+Test phone numbers in `auth.service.ts` (`testPhone`) work with the fixed code `123456` and no SMS.
 
-secret و انقضای توکن از env می‌آیند (`JWT_SECRET` اجباری است — اگر نباشد اپ با خطا بالا نمی‌آید — و `JWT_EXPIRES_IN` پیش‌فرض `3600s`). هر دو در `src/auth/constants.ts` خوانده می‌شوند.
+Token secret and expiry come from env (`JWT_SECRET` is required — the app fails to start without it — and `JWT_EXPIRES_IN` defaults to `3600s`). Both are read in `src/auth/constants.ts`.
 
-## دیپلوی
+## Deploy
 
-`.github/workflows/deploy.yml` — روی push به `dev`: build، سپس rsync کردن `dist/` + `package.json` به cPanel با SSH و `touch tmp/restart.txt`. یعنی **کد باید حتماً build شود وگرنه دیپلوی می‌شکند** → قبل از commit روی `dev` حتماً `npm run build`.
+`.github/workflows/deploy.yml` — on push to `dev`: build, then rsync `dist/` + `package.json` to cPanel over SSH and `touch tmp/restart.txt`. So **the code must build or the deploy breaks** → always run `npm run build` before committing to `dev`.
 
-## وضعیت تست‌ها (خط پایه)
+## Test status (baseline)
 
-`npm test` در حال حاضر **۴ suite / ۴۵ تست fail** دارد و ۲۱ تست pass — این وضعیت از قبل وجود داشته و ربطی به تغییرات اخیر ندارد. علت اصلی: `Nest can't resolve dependencies` در spec ها (مثلاً `categories.controller.spec.ts`). موقع ارزیابی تغییرات خودم، این عدد را به‌عنوان خط پایه در نظر بگیر و فقط بررسی کن بدتر نشده باشد.
+`npm test` currently has **4 suites / 45 tests failing** and 21 passing — this predates my changes and is unrelated. Main cause: `Nest can't resolve dependencies` in specs (e.g. `categories.controller.spec.ts`). When evaluating my own changes, treat this number as the baseline and only check that it didn't get worse.
 
-`npm run lint` هم حدود ۱۱۶ خطای از قبل موجود دارد (اغلب unused import و `no-unsafe-*`).
-⚠️ اسکریپت `lint` فلگ `--fix` دارد و فایل‌های نامرتبط را هم تغییر می‌دهد؛ بعد از اجرای آن حتماً `git status` بگیر و تغییرات خارج از دامنه را `git checkout --` کن.
+`npm run lint` also has ~116 pre-existing errors (mostly unused imports and `no-unsafe-*`).
+⚠️ The `lint` script has `--fix` and also changes unrelated files; after running it always `git status` and `git checkout --` the out-of-scope changes.
 
-## نکات و بدهی‌های فنی (بدون درخواست کاربر خودسرانه تغییرشان نده، ولی بدان)
+## Notes & tech debt (don't change these on a whim without a user request, but be aware)
 
-1. `ioredis` نصب است ولی هیچ‌جا استفاده نمی‌شود.
-2. ماژول‌ها به‌جای import کردن ماژولِ صاحبِ سرویس، خودِ سرویس را در `providers` تکرار می‌کنند (مثلاً `BusinessModule` که `BusinessImageService` و `CategoriesService` را provide می‌کند) — این باعث نمونه‌های مجزا می‌شود.
-3. در `CreateBusinessReviewDto` و `UpdateBusinessReviewDto`، فیلد `body` با `?` علامت‌گذاری شده ولی `@IsOptional()` ندارد → عملاً اجباری است. همچنین `rating` هیچ محدودیت ۱ تا ۵ ندارد.
-4. مدل‌های `Order`, `OrderItem`, `StockReservation` در اسکیما هستند ولی ماژول/روت ندارند — برای فاز بعدی.
-5. `ProductsModule` و `FavoriteBusinessModule` عمداً در `app.module.ts` کامنت‌اند و قرار است بعداً فعال شوند — کامنتشان را برندار.
+1. `ioredis` is installed but used nowhere.
+2. Modules repeat the service in their `providers` instead of importing the module that owns it (e.g. `BusinessModule` providing `BusinessImageService` and `CategoriesService`) — this creates separate instances.
+3. In `CreateBusinessReviewDto` and `UpdateBusinessReviewDto`, `body` is marked with `?` but has no `@IsOptional()` → it is effectively required. Also `rating` has no 1–5 constraint.
+4. `Order`, `OrderItem`, `StockReservation` models exist in the schema but have no module/route — for a later phase.
+5. `ProductsModule` and `FavoriteBusinessModule` are intentionally commented out in `app.module.ts` and meant to be enabled later — don't uncomment them.
 
-## کارهایی که قبلاً انجام شده (تکرارشان نکن)
+## Already done (don't repeat)
 
-- کلیدهای `gh_deploy_key` از گیت untrack و به `.gitignore` اضافه شدند. (کاربر باید کلید را rotate کند و تاریخچه‌ی گیت را پاک کند.)
-- `env.example` از مقادیر واقعی پاک و به نمونه‌ی کامل تبدیل شد.
-- JWT secret از هاردکد به `JWT_SECRET` در env منتقل شد (با fail-fast).
-- `DATABASE_HOST`/`DATABASE_PORT` به env و به هر دو مسیر اتصال اضافه شد.
-- دسترسی ثبت/ویرایش نظر در `business-review` به `User, Owner, Admin` باز شد (مالکیت همچنان در سرویس چک می‌شود).
-- `PROJECT_DOCUMENTATION.md` بازنویسی شد.
-- نقش `USER` کاملاً حذف شد (enum، همه‌ی `@Roles`، seed و دیتابیس از طریق مایگریشن).
-- جریان تایید نظرها اضافه شد: `isApproved`/`approvedAt` روی `BusinessReview`، لیست مدیریت `GET /reviews` و `PATCH /reviews/:id/status`.
-- `reviewsAverage` / `reviewsCount` به همه‌ی لیست‌های business اضافه شد (`BusinessService.listBusinesses`, `getFavorites` و لیست‌های `CategoriesService`). چهار متد `findAll/findByStatus/findPerOwner/findPerOwnerByStatus` روی هلپر خصوصی `listBusinesses` یکی شدند.
+- `gh_deploy_key` files were untracked from git and added to `.gitignore`. (User must rotate the key and purge git history.)
+- `env.example` was cleared of real values and turned into a full sample.
+- JWT secret moved from hardcoded to `JWT_SECRET` in env (with fail-fast).
+- `DATABASE_HOST`/`DATABASE_PORT` added to env and to both connection paths.
+- Review create/edit access in `business-review` was opened to `User, Owner, Admin` (ownership is still checked in the service).
+- `PROJECT_DOCUMENTATION.md` was rewritten.
+- The `USER` role was fully removed (enum, all `@Roles`, seed, and DB via migration).
+- Review approval flow was added: `isApproved`/`approvedAt` on `BusinessReview`, management list `GET /reviews`, and `PATCH /reviews/:id/status`.
+- `reviewsAverage` / `reviewsCount` added to all business lists (`BusinessService.listBusinesses`, `getFavorites`, and `CategoriesService` lists). The four methods `findAll/findByStatus/findPerOwner/findPerOwnerByStatus` were unified onto the private `listBusinesses` helper.
