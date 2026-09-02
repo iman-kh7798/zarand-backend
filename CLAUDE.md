@@ -107,7 +107,7 @@ Token payload: `{ sub, phone, role, name }`.
 
 - `prisma/schema.prisma` — `datasource db` has **no `url`**; the connection goes through the `@prisma/adapter-mariadb` driver adapter in `PrismaService` using env vars `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME`. `DATABASE_URL` is only needed for the CLI (in `prisma.config.ts`).
   - Both paths (`PrismaService` and `seed.ts`) fall back to `localhost:3306`. Make sure `DATABASE_URL` and `DATABASE_HOST` point to the same server.
-- Models: `Role, User, Business, BusinessSocialLink, FavoriteBusiness, Category, Product, ProductImage, BusinessImage, ProductVariant, Order, OrderItem, Review, BusinessReview, StockReservation, AuditLog, Otp`.
+- Models: `Role, User, Business, BusinessSocialLink, FavoriteBusiness, Category, Product, ProductImage, BusinessImage, ProductVariant, Order, OrderItem, Review, BusinessReview, StockReservation, AuditLog, Otp, Feedback`.
   - Order/cart (`Order`, `OrderItem`, `StockReservation`) exist in the schema but have **no module/route**.
 - Keys: `String @db.Char(36)` with `uuid()`; `Role.id` is an integer (1=ADMIN, 2=OWNER, 3=USER per `seed.ts`).
 - `Business.status`: `PENDING | APPROVED | REJECTED`. Anonymous users only see `APPROVED`.
@@ -137,6 +137,8 @@ Token payload: `{ sub, phone, role, name }`.
 | `categories` (POST/PATCH/DELETE), `categories/business/set`                          | —                    | ADMIN (setting a category: ADMIN+OWNER)                            |
 | `users` CRUD                                                                         | —                    | ADMIN; `users/profile` (GET/POST) for all logged-in users          |
 | `role`                                                                               | GET                  | ADMIN                                                              |
+| `feedback`                                                                           | POST                 | public — site suggestion/feedback form (name, contact?, message)   |
+| `feedback`, `feedback/:id`, `feedback/:id/read`                                       | GET / PATCH / DELETE | ADMIN — list (take/skip/lastId/search/isRead), view, mark read, delete |
 | `favorite-businesses/*`                                                              | —                    | logged in (module not registered)                                  |
 | `products/*`, `product-image/*`                                                      | —                    | **inactive** (module commented out in app.module)                  |
 

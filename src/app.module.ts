@@ -13,6 +13,7 @@ import { BusinessImageModule } from './business-image/business-image.module';
 import { ProductImageModule } from './product-image/product-image.module';
 import { SmsModule } from './sms/sms.module';
 import { BusinessReviewModule } from './business-review/business-review.module';
+import { FeedbackModule } from './feedback/feedback.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { WinstonModule } from 'nest-winston';
@@ -36,6 +37,7 @@ import { winstonConfig } from './config/winston.config';
     ProductImageModule,
     SmsModule,
     BusinessReviewModule,
+    FeedbackModule,
     WinstonModule.forRoot(winstonConfig),
     // FavoriteBusinessModule,
   ],
