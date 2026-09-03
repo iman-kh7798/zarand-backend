@@ -39,9 +39,16 @@ SCHEMA_STRATEGY="${PRISMA_SCHEMA_STRATEGY:-push}"
 if [ "$SCHEMA_STRATEGY" = "deploy" ]; then
   echo "[entrypoint] running: prisma migrate deploy"
   npx prisma migrate deploy
-else
+elif [ "$NODE_ENV" = "production" ]; then
+  # در production حذف ستون باید آگاهانه انجام شود (بدون --accept-data-loss)
   echo "[entrypoint] running: prisma db push"
   npx prisma db push
+else
+  # dev/local: طبق روال همین ریپو با db push جلو می‌رویم و drift مخربِ
+  # دیتابیسِ توسعه (drop ستون‌های حذف‌شده از schema) را می‌پذیریم؛ در غیر این
+  # صورت هر تغییر schema باعث می‌شود کانتینر در حلقه‌ی ری‌استارت گیر کند.
+  echo "[entrypoint] running: prisma db push --accept-data-loss (non-production)"
+  npx prisma db push --accept-data-loss
 fi
 
 # --- optional one-off seed ----------------------------------------------

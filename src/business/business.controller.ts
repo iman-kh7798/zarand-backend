@@ -170,6 +170,18 @@ export class BusinessController {
 
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.Admin, Role.Owner)
+  @Patch(':businessId/image/:imageId/set-main')
+  setMainImage(
+    @Req() req: { user: { sub: string; role: Role } },
+    @Param('businessId') businessId: string,
+    @Param('imageId') imageId: string,
+  ) {
+    return this.businessService.setMainImage(businessId, imageId, req.user);
+  }
+
+  @ApiBearerAuth('access-token')
+  @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.Owner)
   @Delete(':businessId/image/:imageId')
   deleteImage(

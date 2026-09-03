@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -21,6 +22,16 @@ import { BusinessStatus, Prisma } from '@prisma/client';
 import { Role } from 'src/role/role.enum';
 import { FavoriteBusinessService } from 'src/favorite-business/favorite-business.service';
 import { BusinessReviewService } from 'src/business-review/business-review.service';
+
+/**
+ * ترتیب تصاویر گالری: تصویر اصلی/کاور همیشه اول می‌آید، سپس بر اساس `position`
+ * و قدمت. هر جا `BusinessImage` را include می‌کنیم همین ترتیب استفاده می‌شود.
+ */
+const PRIMARY_IMAGE_ORDER: Prisma.BusinessImageOrderByWithRelationInput[] = [
+  { isPrimary: 'desc' },
+  { position: 'asc' },
+  { createdAt: 'asc' },
+];
 
 export interface BusinessListFilters {
   title?: string;
@@ -82,7 +93,13 @@ export class BusinessService {
             : {}),
         },
       });
-      if (uploads.length) await this.addImages(business.id, uploads);
+      if (uploads.length) {
+        const primaryIndex =
+          dto.mainImageIndex !== undefined && dto.mainImageIndex !== ''
+            ? Number(dto.mainImageIndex)
+            : undefined;
+        await this.addImages(business.id, uploads, undefined, primaryIndex);
+      }
     } catch (error: any) {
       this.uploadService.removeMany(uploads.map((upload) => upload.path));
       if (error.code === 'P2025') {
@@ -114,6 +131,7 @@ export class BusinessService {
     businessId: string,
     uploads: { filename: string; path: string }[],
     altText?: string,
+    primaryIndex?: number,
   ) {
     const existingCount = await this.prisma.businessImage.count({
       where: { businessId },
@@ -122,14 +140,43 @@ export class BusinessService {
       this.uploadService.removeMany(uploads.map((upload) => upload.path));
       throw new BadRequestException('BUSINESS_IMAGE_LIMIT_EXCEEDED');
     }
+
+    // ایندکس کاورِ درخواستی فقط وقتی معتبر است که عدد صحیح و داخل بازه باشد.
+    const chosenIndex =
+      primaryIndex !== undefined &&
+      Number.isInteger(primaryIndex) &&
+      primaryIndex >= 0 &&
+      primaryIndex < uploads.length
+        ? primaryIndex
+        : undefined;
+
+    const hasPrimary =
+      existingCount > 0 &&
+      (await this.prisma.businessImage.count({
+        where: { businessId, isPrimary: true },
+      })) > 0;
+
+    // اگر کاور صریح انتخاب شده و کسب‌وکار از قبل تصویر اصلی دارد، اول صفرش می‌کنیم.
+    if (chosenIndex !== undefined && hasPrimary) {
+      await this.prisma.businessImage.updateMany({
+        where: { businessId, isPrimary: true },
+        data: { isPrimary: false },
+      });
+    }
+
     const images = await Promise.all(
-      uploads.map((upload) =>
-        this.businessImageService.create({
+      uploads.map((upload, index) => {
+        const isPrimary =
+          chosenIndex !== undefined
+            ? index === chosenIndex
+            : !hasPrimary && index === 0;
+        return this.businessImageService.create({
           businessId,
           url: upload.path,
           altText,
-        }),
-      ),
+          isPrimary,
+        });
+      }),
     );
     return images;
   }
@@ -153,7 +200,7 @@ export class BusinessService {
         ...(lastId ? { cursor: { id: lastId } } : {}),
         include: {
           owner: true,
-          BusinessImage: true,
+          BusinessImage: { orderBy: PRIMARY_IMAGE_ORDER },
           category: true,
         },
       }),
@@ -237,7 +284,7 @@ export class BusinessService {
       where: { id },
       include: {
         owner: true,
-        BusinessImage: true,
+        BusinessImage: { orderBy: PRIMARY_IMAGE_ORDER },
         category: true,
         socialLinks: {
           select: { id: true, createdAt: true, url: true, platform: true },
@@ -248,6 +295,12 @@ export class BusinessService {
     if (!business) {
       throw new NotFoundException('BUSSINESS_NOT_FOUND');
     }
+
+    // تصویر اصلی/کاور جدا هم برگردانده می‌شود؛ اگر هیچ‌کدام اصلی نبود، اولین تصویر.
+    const mainImage =
+      business.BusinessImage.find((img) => img.isPrimary) ??
+      business.BusinessImage[0] ??
+      null;
 
     if (user && user.role === Role.Owner) {
       let isFavorite: boolean = false;
@@ -262,10 +315,10 @@ export class BusinessService {
       } catch (err) {
         console.log(err);
       }
-      return { ...business, isFavorite };
+      return { ...business, mainImage, isFavorite };
     }
 
-    return business;
+    return { ...business, mainImage };
   }
 
   async update(id: string, dto: UpdateBusinessDto, ownerId: string) {
@@ -405,6 +458,38 @@ export class BusinessService {
     return this.businessImageService.remove(imageId, businessId);
   }
 
+  /**
+   * چک می‌کند کسب‌وکار وجود دارد و درخواست‌دهنده اجازه‌ی مدیریت آن را دارد
+   * (ADMIN همه، OWNER فقط کسب‌وکار خودش). در غیر این صورت خطا می‌دهد.
+   */
+  private async assertBusinessManageable(
+    businessId: string,
+    user: { sub: string; role: Role },
+  ): Promise<void> {
+    const business = await this.prisma.business.findUnique({
+      where: { id: businessId },
+      select: { ownerId: true },
+    });
+    if (!business) throw new NotFoundException('BUSINESS_NOT_FOUND');
+    if (user.role !== Role.Admin && business.ownerId !== user.sub) {
+      throw new ForbiddenException('BUSINESS_ACCESS_DENIED');
+    }
+  }
+
+  /**
+   * تصویر انتخابی را «تصویر اصلی/کاور» کسب‌وکار می‌کند.
+   * ابتدا مالکیت/دسترسی کسب‌وکار احراز می‌شود، سپس در یک تراکنش تنها همین تصویر
+   * `isPrimary: true` می‌شود و بقیه‌ی تصاویر همان کسب‌وکار صفر می‌شوند.
+   */
+  async setMainImage(
+    businessId: string,
+    imageId: string,
+    user: { sub: string; role: Role },
+  ) {
+    await this.assertBusinessManageable(businessId, user);
+    return this.businessImageService.setPrimary(businessId, imageId);
+  }
+
   async replaceImage(
     businessId: string,
     imageId: string,
@@ -464,7 +549,7 @@ export class BusinessService {
         business: {
           include: {
             owner: true,
-            BusinessImage: true,
+            BusinessImage: { orderBy: PRIMARY_IMAGE_ORDER },
             category: true,
           },
         },
