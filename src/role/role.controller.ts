@@ -12,13 +12,13 @@ import { ApiBearerAuth } from '@nestjs/swagger';
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
-  @Roles(Role.ADMIN)
+  @Roles(Role.Admin)
   @Get()
   findAll() {
     return this.roleService.findAll();
   }
 
-  @Roles(Role.ADMIN)
+  @Roles(Role.Admin)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.roleService.findOne(+id);
