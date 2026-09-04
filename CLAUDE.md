@@ -43,6 +43,7 @@ src/
   business/          project core — largest service (~433 lines)
   business-image/    business images
   business-review/   business rating & review + approval flow (business/:id/reviews and reviews/*)
+  notification/      اعلان‌ها: مدل Notification + صف پیامک (worker)
   business-report/   public "fix business info" reports (business-reports/*) — admin + owner (own only)
   categories/        tree categories + link to business
   favorite-business/ favorites (module not enabled in app.module; its service is used directly)
@@ -108,13 +109,13 @@ Token payload: `{ sub, phone, role, name }`.
 
 - `prisma/schema.prisma` — `datasource db` has **no `url`**; the connection goes through the `@prisma/adapter-mariadb` driver adapter in `PrismaService` using env vars `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME`. `DATABASE_URL` is only needed for the CLI (in `prisma.config.ts`).
   - Both paths (`PrismaService` and `seed.ts`) fall back to `localhost:3306`. Make sure `DATABASE_URL` and `DATABASE_HOST` point to the same server.
-- Models: `Role, User, Business, BusinessSocialLink, FavoriteBusiness, Category, Product, ProductImage, BusinessImage, ProductVariant, Order, OrderItem, Review, BusinessReview, StockReservation, AuditLog, Otp, Feedback, BusinessReport`.
+- Models: `Notification, NotificationRecipient, Role, User, Business, BusinessSocialLink, FavoriteBusiness, Category, Product, ProductImage, BusinessImage, ProductVariant, Order, OrderItem, Review, BusinessReview, StockReservation, AuditLog, Otp, Feedback, BusinessReport`.
   - `BusinessReview.status` is enum `BusinessReviewStatus` (`PENDING`/`APPROVED`/`REJECTED`) — replaced the old `isApproved` boolean (migration `20260902160000_review_status_enum`, which backfills `isApproved=true` → `APPROVED`).
   - Order/cart (`Order`, `OrderItem`, `StockReservation`) exist in the schema but have **no module/route**.
 - Keys: `String @db.Char(36)` with `uuid()`; `Role.id` is an integer (1=ADMIN, 2=OWNER, 3=USER per `seed.ts`).
 - `Business.status`: `PENDING | APPROVED | REJECTED`. Anonymous users only see `APPROVED`.
 - After a schema change: `npx prisma migrate dev --name ...` then `npm run generate`.
-- Migrations: `0_init`, `20260827120000_review_approval_and_remove_user_role`, `20260902144603_add_feedback`, `20260902150406_add_business_report`, `20260902160000_review_status_enum`.
+- Migrations: `0_init`, `20260827120000_review_approval_and_remove_user_role`, `20260902144603_add_feedback`, `20260902150406_add_business_report`, `20260902160000_review_status_enum`, `20260903120000_business_image_is_primary`, `20260903140000_add_notifications`.
 - ⚠️ The DB is not reachable from my dev environment, so `migrate dev` cannot run. To create a new migration without a DB:
   `npx prisma migrate diff --from-schema <old-schema> --to-schema prisma/schema.prisma --script`
   (in Prisma 7 the flags are `--from-schema`/`--to-schema`, not `--from-schema-datamodel`.)
@@ -145,8 +146,28 @@ Token payload: `{ sub, phone, role, name }`.
 | `business-reports`, `business-reports/:id`                                            | GET                  | ADMIN (all) / OWNER (own businesses only) — filters take/skip/lastId/businessId/type/status/isRead/search |
 | `business-reports/:id/status`, `business-reports/:id/read`                            | PATCH                | ADMIN / OWNER (own business) — set status (`PENDING`/`RESOLVED`/`REJECTED`) or read flag |
 | `business-reports/:id`                                                               | DELETE               | ADMIN                                                              |
+| `notifications/me`, `notifications/me/unread-count`                                  | GET                  | logged in — inbox + unread count                                    |
+| `notifications/me/:id/read`, `notifications/me/read-all`                             | PATCH                | logged in (`:id` = recipient row id, not notification id)          |
+| `notifications`                                                                      | POST                 | ADMIN (sends immediately) / OWNER (queued as PENDING_APPROVAL)     |
+| `notifications`, `notifications/:id`                                                 | GET                  | ADMIN (all) / OWNER (only what they created)                       |
+| `notifications/:id/approve`, `notifications/:id/reject`                              | PATCH                | ADMIN — approve dispatches it; reject takes `{ reason? }`          |
+| `notifications/:id`                                                                  | DELETE               | ADMIN                                                              |
 | `favorite-businesses/*`                                                              | —                    | logged in (module not registered)                                  |
 | `products/*`, `product-image/*`                                                      | —                    | **inactive** (module commented out in app.module)                  |
+
+## Notifications
+
+Two tables: `Notification` (content + audience + status) and `NotificationRecipient`
+(one row per user = the in-app inbox **and** the SMS outbox).
+
+- `NotificationService.notify(input)` is the single entry point for system events. It never throws — a failed notification must not break the main flow.
+- Audience (`NotificationAudience`) is resolved to user ids with one query, then recipients are inserted with `createMany` in chunks of 500. Never insert per-user in a loop.
+- SMS is **not** sent inside the request. Recipient rows get `smsStatus: PENDING` and `NotificationSmsWorker` (an `@Interval` from `@nestjs/schedule`, batch of 50 every 20s, max 3 attempts) drains the queue via `SmsService.sendRaw`. `sendRaw` is the only SMS method that rejects on failure — the worker needs that for retries.
+- Anti-spam: `smsCooldownMinutes` on `notify()` turns SMS off (the in-app notification is still created) if a same-type SMS notification went out recently. Used for `BUSINESS_REPORT_CREATED` (`NOTIFICATION_REPORT_SMS_COOLDOWN_MIN`, default 30) on top of the throttler.
+- Texts live in `notification.templates.ts` — don't inline message strings in services.
+- Owner-created notifications are `PENDING_APPROVAL` and only reach `BUSINESS_FAVORITES` of a business they own; admin-created ones dispatch immediately.
+- Wired events: business created → ADMINS (+SMS), business approved/rejected → owner (+SMS, rejection includes `Business.statusReason`), new review/reply → owner (**no SMS**), business report → ADMINS (+SMS with cooldown), new signup → welcome (+SMS).
+- No web push yet — deliberately out of scope.
 
 ## Auth (OTP flow)
 

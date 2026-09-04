@@ -4,19 +4,29 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { BusinessReviewStatus, Prisma } from '@prisma/client';
+import {
+  BusinessReviewStatus,
+  NotificationAudience,
+  NotificationType,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Role } from 'src/role/role.enum';
 import { CreateBusinessReviewDto } from './dto/create-business-review.dto';
 import { UpdateBusinessReviewDto } from './dto/update-business-review.dto';
 import { ListBusinessReviewsDto } from './dto/list-business-reviews.dto';
+import { NotificationService } from 'src/notification/notification.service';
+import { notificationTemplates } from 'src/notification/notification.templates';
 
 /** اطلاعات کاربری که درخواست را زده — از payload توکن می‌آید */
 type Actor = { sub: string; role: Role };
 
 @Injectable()
 export class BusinessReviewService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationService: NotificationService,
+  ) {}
 
   async createOrUpdate(
     businessId: string,
@@ -25,7 +35,7 @@ export class BusinessReviewService {
   ) {
     const business = await this.prisma.business.findUnique({
       where: { id: businessId },
-      select: { id: true, ownerId: true },
+      select: { id: true, ownerId: true, title: true },
     });
     if (!business) throw new NotFoundException('BUSINESS_NOT_FOUND');
 
@@ -45,7 +55,7 @@ export class BusinessReviewService {
       if (!dto.body?.trim()) throw new BadRequestException('BODY_REQUIRED');
 
       // مالک کسب‌وکار هم مجاز است به نظرها پاسخ بدهد
-      return this.prisma.businessReview.create({
+      const reply = await this.prisma.businessReview.create({
         data: {
           body: dto.body,
           businessId,
@@ -53,6 +63,8 @@ export class BusinessReviewService {
           parentId: parent.id,
         },
       });
+      await this.notifyOwner(business, userId, true);
+      return reply;
     }
 
     // ---- حالت نظر ریشه ----
@@ -88,7 +100,33 @@ export class BusinessReviewService {
         userId,
       },
     });
+    await this.notifyOwner(business, userId, false);
     return review;
+  }
+
+  /**
+   * اعلان «نظر جدید» برای مالک کسب‌وکار.
+   * طبق نیازمندی فقط اعلان درون‌برنامه‌ای است و پیامکی ارسال نمی‌شود.
+   * اگر خود مالک نظر/پاسخ گذاشته باشد، اعلانی برای او ساخته نمی‌شود.
+   */
+  private async notifyOwner(
+    business: { id: string; title: string },
+    actorId: string,
+    isReply: boolean,
+  ) {
+    const content = notificationTemplates.REVIEW_CREATED(
+      business.title,
+      isReply,
+    );
+    await this.notificationService.notify({
+      type: NotificationType.REVIEW_CREATED,
+      audience: NotificationAudience.BUSINESS_OWNER,
+      businessId: business.id,
+      sendSms: false,
+      excludeUserIds: [actorId],
+      data: { businessId: business.id },
+      ...content,
+    });
   }
 
   async update(id: string, userId: string, dto: UpdateBusinessReviewDto) {

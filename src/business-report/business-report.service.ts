@@ -3,12 +3,28 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { BusinessReportStatus, Prisma } from '@prisma/client';
+import {
+  BusinessReportStatus,
+  NotificationAudience,
+  NotificationType,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Role } from 'src/role/role.enum';
 import { SmsService } from 'src/sms/sms.service';
 import { CreateBusinessReportDto } from './dto/create-business-report.dto';
 import { ListBusinessReportsDto } from './dto/list-business-reports.dto';
+import { NotificationService } from 'src/notification/notification.service';
+import { notificationTemplates } from 'src/notification/notification.templates';
+
+/**
+ * فاصله‌ی حداقلی بین دو پیامکِ «گزارش جدید» به ادمین (دقیقه).
+ * اعلان درون‌برنامه‌ای همیشه ساخته می‌شود؛ فقط پیامک محدود می‌شود تا
+ * چند گزارش پشت‌سرهم، ادمین را با پیامک اسپم نکند (مکمل throttler).
+ */
+const ADMIN_REPORT_SMS_COOLDOWN_MIN = Number(
+  process.env.NOTIFICATION_REPORT_SMS_COOLDOWN_MIN ?? 30,
+);
 
 /** اطلاعات کاربری که درخواست را زده — از payload توکن می‌آید */
 type Actor = { sub: string; role: Role };
@@ -18,6 +34,7 @@ export class BusinessReportService {
   constructor(
     private prisma: PrismaService,
     private sms: SmsService,
+    private notificationService: NotificationService,
   ) {}
 
   // ثبت گزارش جدید از فرم عمومی سایت — بدون نیاز به لاگین
@@ -40,6 +57,20 @@ export class BusinessReportService {
     if (business.owner?.phone) {
       this.sms.sendBusinessReportNotice(business.owner.phone, business.title);
     }
+
+    // اعلان برای ادمین‌ها؛ پیامکش با cooldown محدود شده است
+    const content = notificationTemplates.BUSINESS_REPORT_CREATED(
+      business.title,
+    );
+    await this.notificationService.notify({
+      type: NotificationType.BUSINESS_REPORT_CREATED,
+      audience: NotificationAudience.ADMINS,
+      businessId: business.id,
+      sendSms: true,
+      smsCooldownMinutes: ADMIN_REPORT_SMS_COOLDOWN_MIN,
+      data: { businessId: business.id, reportId: report.id },
+      ...content,
+    });
 
     return report;
   }

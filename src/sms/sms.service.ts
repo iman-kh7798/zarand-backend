@@ -40,4 +40,23 @@ export class SmsService {
       console.error('sendBusinessReportNotice failed', e);
     }
   }
+
+  /**
+   * ارسال یک پیامک دلخواه — پایه‌ی صف اعلان‌ها.
+   * برخلاف بقیه‌ی متدها خطا را نمی‌بلعد؛ چون worker صف باید بفهمد
+   * ارسال شکست خورده تا دوباره تلاش کند.
+   */
+  sendRaw(phone: string, message: string): Promise<void> {
+    const sender = process.env.KAVENEGAR_SENDER || '10008663';
+    return new Promise<void>((resolve, reject) => {
+      this.kavenegar.Send(
+        { message, sender, receptor: phone },
+        (_response: unknown, status: number) => {
+          // کاوه‌نگار وضعیت ۲۰۰ را موفق می‌داند
+          if (status === 200) resolve();
+          else reject(new Error(`KAVENEGAR_STATUS_${status}`));
+        },
+      );
+    });
+  }
 }

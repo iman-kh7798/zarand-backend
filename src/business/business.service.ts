@@ -22,6 +22,9 @@ import { BusinessStatus, Prisma } from '@prisma/client';
 import { Role } from 'src/role/role.enum';
 import { FavoriteBusinessService } from 'src/favorite-business/favorite-business.service';
 import { BusinessReviewService } from 'src/business-review/business-review.service';
+import { NotificationService } from 'src/notification/notification.service';
+import { notificationTemplates } from 'src/notification/notification.templates';
+import { NotificationAudience, NotificationType } from '@prisma/client';
 
 /**
  * ترتیب تصاویر گالری: تصویر اصلی/کاور همیشه اول می‌آید، سپس بر اساس `position`
@@ -51,6 +54,7 @@ export class BusinessService {
     private categoryService: CategoriesService,
     private uploadService: UploadService,
     private businessReviewService: BusinessReviewService,
+    private notificationService: NotificationService,
   ) {}
 
   async create(
@@ -100,6 +104,24 @@ export class BusinessService {
             : undefined;
         await this.addImages(business.id, uploads, undefined, primaryIndex);
       }
+
+      // اعلان + پیامک برای ادمین‌ها (best-effort — خطا مانع ثبت نمی‌شود)
+      const owner = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true },
+      });
+      const content = notificationTemplates.BUSINESS_CREATED(
+        business.title,
+        owner?.name,
+      );
+      await this.notificationService.notify({
+        type: NotificationType.BUSINESS_CREATED,
+        audience: NotificationAudience.ADMINS,
+        businessId: business.id,
+        sendSms: true,
+        data: { businessId: business.id },
+        ...content,
+      });
     } catch (error: any) {
       this.uploadService.removeMany(uploads.map((upload) => upload.path));
       if (error.code === 'P2025') {
@@ -400,12 +422,35 @@ export class BusinessService {
   }
 
   async updateStatus(id: string, body: UpdateBusinessStatusDto) {
-    return await this.prisma.business.update({
+    const isRejected = body.status === BusinessStatus.REJECTED;
+    const business = await this.prisma.business.update({
       where: { id },
       data: {
         status: body.status,
+        // دلیل فقط برای رد شدن معنا دارد؛ با تایید پاک می‌شود
+        statusReason: isRejected ? (body.reason?.trim() ?? null) : null,
       },
     });
+
+    // اعلان + پیامک برای مالک؛ در حالت رد، دلیل هم فرستاده می‌شود
+    const content = isRejected
+      ? notificationTemplates.BUSINESS_REJECTED(
+          business.title,
+          business.statusReason,
+        )
+      : notificationTemplates.BUSINESS_APPROVED(business.title);
+    await this.notificationService.notify({
+      type: isRejected
+        ? NotificationType.BUSINESS_REJECTED
+        : NotificationType.BUSINESS_APPROVED,
+      audience: NotificationAudience.BUSINESS_OWNER,
+      businessId: business.id,
+      sendSms: true,
+      data: { businessId: business.id },
+      ...content,
+    });
+
+    return business;
   }
 
   async remove(id: string) {

@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  MaxLength,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -64,4 +65,11 @@ export class UpdateBusinessStatusDto {
   @ApiProperty({ enum: [BusinessStatus.APPROVED, BusinessStatus.REJECTED] })
   @IsIn([BusinessStatus.APPROVED, BusinessStatus.REJECTED])
   status: typeof BusinessStatus.APPROVED | typeof BusinessStatus.REJECTED;
+
+  /** دلیل رد شدن — در اعلان و پیامکِ مالک هم فرستاده می‌شود */
+  @ApiPropertyOptional({ description: 'فقط برای وضعیت REJECTED' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
 }
