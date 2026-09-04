@@ -146,6 +146,7 @@ Token payload: `{ sub, phone, role, name }`.
 | `business-reports`, `business-reports/:id`                                            | GET                  | ADMIN (all) / OWNER (own businesses only) — filters take/skip/lastId/businessId/type/status/isRead/search |
 | `business-reports/:id/status`, `business-reports/:id/read`                            | PATCH                | ADMIN / OWNER (own business) — set status (`PENDING`/`RESOLVED`/`REJECTED`) or read flag |
 | `business-reports/:id`                                                               | DELETE               | ADMIN                                                              |
+| `notifications/me/stream`                                                            | GET (SSE)            | logged in — live channel; token via header **or** `?token=`         |
 | `notifications/me`, `notifications/me/unread-count`                                  | GET                  | logged in — inbox + unread count                                    |
 | `notifications/me/:id/read`, `notifications/me/read-all`                             | PATCH                | logged in (`:id` = recipient row id, not notification id)          |
 | `notifications`                                                                      | POST                 | ADMIN (sends immediately) / OWNER (queued as PENDING_APPROVAL)     |
@@ -167,6 +168,9 @@ Two tables: `Notification` (content + audience + status) and `NotificationRecipi
 - Texts live in `notification.templates.ts` — don't inline message strings in services.
 - Owner-created notifications are `PENDING_APPROVAL` and only reach `BUSINESS_FAVORITES` of a business they own; admin-created ones dispatch immediately.
 - Wired events: business created → ADMINS (+SMS), business approved/rejected → owner (+SMS, rejection includes `Business.statusReason`), new review/reply → owner (**no SMS**), business report → ADMINS (+SMS with cooldown), new signup → welcome (+SMS).
+- **Delivery is SSE, not polling.** `GET /notifications/me/stream` (`@Sse`) keeps one connection per tab open. Events: `connected`, `notification`, `read`, `read-all`, `ping` (every 25s so proxies don't drop an idle connection). The route uses `SseAuthGuard` (`src/auth/sse.guard.ts`) — same JWT, but it also accepts `?token=` because browser `EventSource` cannot send headers — and `@SkipThrottle()` so a long-lived stream isn't rate-limited.
+- `NotificationEventsService` is an in-process RxJS `Subject`. `dispatch()` calls `publishToStreams()`, which asks `filterConnected(userIds)` who is online and only then reads the recipient rows for those users — so a broadcast to offline users costs no extra query. `markRead`/`markAllRead` emit `read`/`read-all` so a user's other tabs stay in sync.
+- ⚠️ The bus (like the SMS worker) is per-process: with more than one instance, a user connected to instance A won't get an event emitted on instance B. That needs a Redis pub/sub fan-out (`ioredis` is already a dependency).
 - No web push yet — deliberately out of scope.
 
 ## Auth (OTP flow)

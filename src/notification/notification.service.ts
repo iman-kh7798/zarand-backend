@@ -19,6 +19,7 @@ import {
   ListMyNotificationsDto,
   ListNotificationsDto,
 } from './dto/list-notifications.dto';
+import { NotificationEventsService } from './notification-events.service';
 
 /** اطلاعات کاربری که درخواست را زده — از payload توکن می‌آید */
 type Actor = { sub: string; role: Role };
@@ -52,7 +53,10 @@ const RECIPIENT_CHUNK = 500;
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private events: NotificationEventsService,
+  ) {}
 
   // ---------------------------------------------------------------- رویدادها
 
@@ -149,6 +153,8 @@ export class NotificationService {
         },
       });
 
+      await this.publishToStreams(notification, userIds);
+
       return { recipientsCount: userIds.length };
     } catch (e) {
       await this.prisma.notification.update({
@@ -156,6 +162,53 @@ export class NotificationService {
         data: { status: NotificationStatus.FAILED },
       });
       throw e;
+    }
+  }
+
+  /**
+   * push کردن اعلانِ تازه روی کانال SSE کاربرانی که همین حالا آنلاین‌اند.
+   * فقط برای همان‌ها ردیف گیرنده خوانده می‌شود (برای فرستادن `id` که
+   * کلاینت با آن اعلان را خوانده‌شده می‌کند)، پس پخش گروهی به کاربران
+   * آفلاین هیچ کوئری اضافه‌ای ندارد. خطا اینجا بی‌صداست — اعلان و پیامک
+   * قبلاً ثبت شده‌اند و کلاینت با `notifications/me` هم آن را می‌بیند.
+   */
+  private async publishToStreams(
+    notification: {
+      id: string;
+      type: NotificationType;
+      title: string;
+      body: string;
+      businessId: string | null;
+      data: Prisma.JsonValue;
+    },
+    userIds: string[],
+  ) {
+    try {
+      const online = this.events.filterConnected(userIds);
+      if (!online.length) return;
+
+      for (let i = 0; i < online.length; i += RECIPIENT_CHUNK) {
+        const chunk = online.slice(i, i + RECIPIENT_CHUNK);
+        const rows = await this.prisma.notificationRecipient.findMany({
+          where: { notificationId: notification.id, userId: { in: chunk } },
+          select: { id: true, userId: true, createdAt: true },
+        });
+        for (const row of rows) {
+          this.events.emit(row.userId, {
+            type: 'notification',
+            id: row.id,
+            notificationId: notification.id,
+            notificationType: notification.type,
+            title: notification.title,
+            body: notification.body,
+            businessId: notification.businessId,
+            data: notification.data,
+            createdAt: row.createdAt,
+          });
+        }
+      }
+    } catch (e) {
+      this.logger.error('publishToStreams failed', e as Error);
     }
   }
 
@@ -455,6 +508,8 @@ export class NotificationService {
       });
       if (!exists) throw new NotFoundException('NOTIFICATION_NOT_FOUND');
     }
+    // تب‌ها/دستگاه‌های دیگرِ همین کاربر هم بشمارِ نخوانده را به‌روز کنند
+    this.events.emit(userId, { type: 'read', id });
     return { success: true };
   }
 
@@ -463,6 +518,7 @@ export class NotificationService {
       where: { userId, isRead: false },
       data: { isRead: true, readAt: new Date() },
     });
+    this.events.emit(userId, { type: 'read-all' });
     return { updated: result.count };
   }
 

@@ -3,15 +3,22 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
+  MessageEvent,
   Param,
   Patch,
   Post,
   Query,
   Req,
+  Sse,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
+import { ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { Observable } from 'rxjs';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { SseAuthGuard } from 'src/auth/sse.guard';
+import { NotificationEventsService } from './notification-events.service';
 import { Roles } from 'src/role/role.decorator';
 import { Role } from 'src/role/role.enum';
 import { RolesGuard } from 'src/role/role.guard';
@@ -27,7 +34,35 @@ type AuthedRequest = { user: { sub: string; role: Role } };
 
 @Controller('notifications')
 export class NotificationController {
-  constructor(private readonly service: NotificationService) {}
+  constructor(
+    private readonly service: NotificationService,
+    private readonly events: NotificationEventsService,
+  ) {}
+
+  /**
+   * کانال زنده‌ی اعلان‌ها (SSE) — جایگزین polling.
+   *
+   * چون `EventSource` مرورگر هدر نمی‌فرستد، توکن را می‌توان با
+   * `?token=<jwt>` هم داد (`SseAuthGuard`). رویدادها: `connected`،
+   * `notification`، `read`، `read-all` و `ping` (هر ۲۵ ثانیه برای
+   * زنده‌نگه‌داشتن اتصال پشت پروکسی).
+   */
+  @ApiBearerAuth('access-token')
+  @ApiQuery({
+    name: 'token',
+    required: false,
+    description: 'JWT — برای EventSource که هدر Authorization نمی‌فرستد',
+  })
+  @SkipThrottle()
+  @UseGuards(SseAuthGuard)
+  // جلوگیری از بافر شدن استریم توسط پروکسی (nginx/cPanel)
+  @Header('Cache-Control', 'no-cache, no-transform')
+  @Header('X-Accel-Buffering', 'no')
+  @Header('Connection', 'keep-alive')
+  @Sse('me/stream')
+  stream(@Req() req: AuthedRequest): Observable<MessageEvent> {
+    return this.events.streamFor(req.user.sub);
+  }
 
   // ---- صندوق کاربر جاری (مسیرهای me قبل از :id تعریف شده‌اند) ----
 

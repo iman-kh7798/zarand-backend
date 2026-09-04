@@ -3,6 +3,7 @@ import { PrismaModule } from 'src/prisma/prisma.module';
 import { NotificationController } from './notification.controller';
 import { NotificationService } from './notification.service';
 import { NotificationSmsWorker } from './notification-sms.worker';
+import { NotificationEventsService } from './notification-events.service';
 
 /**
  * ماژول اعلان‌ها. مثل SmsModule سراسری است تا هر سرویسی
@@ -13,7 +14,11 @@ import { NotificationSmsWorker } from './notification-sms.worker';
 @Module({
   imports: [PrismaModule],
   controllers: [NotificationController],
-  providers: [NotificationService, NotificationSmsWorker],
-  exports: [NotificationService],
+  providers: [
+    NotificationService,
+    NotificationEventsService,
+    NotificationSmsWorker,
+  ],
+  exports: [NotificationService, NotificationEventsService],
 })
 export class NotificationModule {}
