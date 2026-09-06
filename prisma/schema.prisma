@@ -393,3 +393,45 @@ model BusinessReport {
   @@index([businessId, createdAt])
   @@index([status, createdAt])
 }
+
+/// وضعیت انتشار مقاله‌ی بلاگ
+enum BlogPostStatus {
+  DRAFT // پیش‌نویس — به‌صورت عمومی نمایش داده نمی‌شود
+  PUBLISHED // منتشرشده
+}
+
+/// دسته‌بندی مقالات بلاگ (معرفی شهر، کسب‌وکارها و راهنماها)
+model BlogCategory {
+  id        String     @id @default(uuid()) @db.Char(36)
+  name      String
+  slug      String     @unique
+  posts     BlogPost[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([slug])
+}
+
+/// مقاله‌ی بلاگ
+model BlogPost {
+  id              String         @id @default(uuid()) @db.Char(36)
+  title           String
+  slug            String         @unique
+  excerpt         String         @db.VarChar(300)
+  content         String         @db.Text // HTML خام؛ قبل از ذخیره سمت سرور sanitize می‌شود
+  coverImage      String?
+  categoryId      String?        @db.Char(36)
+  category        BlogCategory?  @relation(fields: [categoryId], references: [id])
+  authorName      String
+  authorRole      String?
+  authorAvatar    String?
+  readTimeMinutes Int?
+  status          BlogPostStatus @default(DRAFT)
+  publishedAt     DateTime?
+  viewCount       Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([categoryId])
+  @@index([status, publishedAt])
+}
