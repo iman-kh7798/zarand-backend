@@ -214,7 +214,29 @@ export class CategoriesService {
     });
   }
 
-  async getBusinessesByCategory(categoryId: string, query: PaginationDto) {
+  /**
+   * افزودن فیلد `isFavorite` به هر کسب‌وکار لیست با یک کوئری واحد.
+   * اگر کاربر لاگین نکرده باشد لیست بدون تغییر برمی‌گردد. مثل `withStats`
+   * نباید داخل `map` صدا زده شود.
+   */
+  private async attachFavoriteFlags<T extends { id: string }>(
+    rows: T[],
+    userId?: string,
+  ): Promise<(T & { isFavorite?: boolean })[]> {
+    if (!userId || rows.length === 0) return rows;
+    const favorites = await this.prisma.favoriteBusiness.findMany({
+      where: { userId, businessId: { in: rows.map((row) => row.id) } },
+      select: { businessId: true },
+    });
+    const favoriteIds = new Set(favorites.map((f) => f.businessId));
+    return rows.map((row) => ({ ...row, isFavorite: favoriteIds.has(row.id) }));
+  }
+
+  async getBusinessesByCategory(
+    categoryId: string,
+    query: PaginationDto,
+    userId?: string,
+  ) {
     await this.findOne(categoryId);
 
     const businesses = await this.prisma.business.findMany({
@@ -231,12 +253,14 @@ export class CategoriesService {
       },
     });
 
-    return this.businessReviewService.withStats(businesses);
+    const withStats = await this.businessReviewService.withStats(businesses);
+    return this.attachFavoriteFlags(withStats, userId);
   }
 
   async getActiveBusinessesByCategory(
     categoryId: string,
     query: PaginationDto,
+    userId?: string,
   ) {
     await this.findOne(categoryId);
 
@@ -254,7 +278,8 @@ export class CategoriesService {
       },
     });
 
-    return this.businessReviewService.withStats(businesses);
+    const withStats = await this.businessReviewService.withStats(businesses);
+    return this.attachFavoriteFlags(withStats, userId);
   }
 
   async getCategoryByBusiness(businessId: string) {

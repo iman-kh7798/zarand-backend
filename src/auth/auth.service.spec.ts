@@ -8,12 +8,14 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import { UserService } from 'src/users/users.service';
 import { RoleService } from 'src/role/role.service';
+import { NotificationService } from 'src/notification/notification.service';
 
 describe('AuthService', () => {
   let service: AuthService;
   let userService: { [K in keyof UserService]?: jest.Mock };
   let roleService: { [K in keyof RoleService]?: jest.Mock };
   let jwtService: { signAsync: jest.Mock };
+  let notificationService: { notify: jest.Mock };
 
   const role = { id: 2, name: 'OWNER', description: null };
   const user = {
@@ -38,6 +40,9 @@ describe('AuthService', () => {
     jwtService = {
       signAsync: jest.fn().mockResolvedValue('signed-jwt-token'),
     };
+    notificationService = {
+      notify: jest.fn().mockResolvedValue(null),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -45,6 +50,7 @@ describe('AuthService', () => {
         { provide: UserService, useValue: userService },
         { provide: RoleService, useValue: roleService },
         { provide: JwtService, useValue: jwtService },
+        { provide: NotificationService, useValue: notificationService },
       ],
     }).compile();
 

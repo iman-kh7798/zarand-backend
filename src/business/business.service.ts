@@ -20,8 +20,10 @@ import { CategoriesService } from 'src/categories/categories.service';
 import { UploadService } from 'src/upload/upload.service';
 import { BusinessStatus, Prisma } from '@prisma/client';
 import { Role } from 'src/role/role.enum';
-import { FavoriteBusinessService } from 'src/favorite-business/favorite-business.service';
 import { BusinessReviewService } from 'src/business-review/business-review.service';
+import { NotificationService } from 'src/notification/notification.service';
+import { notificationTemplates } from 'src/notification/notification.templates';
+import { NotificationAudience, NotificationType } from '@prisma/client';
 
 /**
  * ترتیب تصاویر گالری: تصویر اصلی/کاور همیشه اول می‌آید، سپس بر اساس `position`
@@ -47,10 +49,10 @@ export class BusinessService {
   constructor(
     private prisma: PrismaService,
     private businessImageService: BusinessImageService,
-    private favoriteBusinessService: FavoriteBusinessService,
     private categoryService: CategoriesService,
     private uploadService: UploadService,
     private businessReviewService: BusinessReviewService,
+    private notificationService: NotificationService,
   ) {}
 
   async create(
@@ -100,6 +102,24 @@ export class BusinessService {
             : undefined;
         await this.addImages(business.id, uploads, undefined, primaryIndex);
       }
+
+      // اعلان + پیامک برای ادمین‌ها (best-effort — خطا مانع ثبت نمی‌شود)
+      const owner = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true },
+      });
+      const content = notificationTemplates.BUSINESS_CREATED(
+        business.title,
+        owner?.name,
+      );
+      await this.notificationService.notify({
+        type: NotificationType.BUSINESS_CREATED,
+        audience: NotificationAudience.ADMINS,
+        businessId: business.id,
+        sendSms: true,
+        data: { businessId: business.id },
+        ...content,
+      });
     } catch (error: any) {
       this.uploadService.removeMany(uploads.map((upload) => upload.path));
       if (error.code === 'P2025') {
@@ -182,6 +202,24 @@ export class BusinessService {
   }
 
   /**
+   * افزودن فیلد `isFavorite` به هر کسب‌وکار لیست با یک کوئری واحد.
+   * اگر کاربر لاگین نکرده باشد لیست بدون تغییر (بدون `isFavorite`) برمی‌گردد.
+   * مثل `withStats` نباید داخل `map` صدا زده شود.
+   */
+  private async attachFavoriteFlags<T extends { id: string }>(
+    rows: T[],
+    userId?: string,
+  ): Promise<(T & { isFavorite?: boolean })[]> {
+    if (!userId || rows.length === 0) return rows;
+    const favorites = await this.prisma.favoriteBusiness.findMany({
+      where: { userId, businessId: { in: rows.map((row) => row.id) } },
+      select: { businessId: true },
+    });
+    const favoriteIds = new Set(favorites.map((f) => f.businessId));
+    return rows.map((row) => ({ ...row, isFavorite: favoriteIds.has(row.id) }));
+  }
+
+  /**
    * لیست صفحه‌بندی‌شده‌ی کسب‌وکارها به همراه میانگین و تعداد نظرات هر کدام.
    * تنها نقطه‌ی اجرای کوئری لیست؛ `findBusinesses` فقط `where` را می‌سازد.
    */
@@ -190,6 +228,7 @@ export class BusinessService {
     take: number,
     skip: number,
     lastId: string | undefined,
+    user?: { role: Role; sub: string },
   ) {
     const [total, rows] = await Promise.all([
       this.prisma.business.count({ where }),
@@ -205,7 +244,8 @@ export class BusinessService {
         },
       }),
     ]);
-    const businesses = await this.businessReviewService.withStats(rows);
+    const withStats = await this.businessReviewService.withStats(rows);
+    const businesses = await this.attachFavoriteFlags(withStats, user?.sub);
     return { businesses, page: { total, take, skip } };
   }
 
@@ -276,6 +316,7 @@ export class BusinessService {
       take,
       skip,
       lastId,
+      user,
     );
   }
 
@@ -302,20 +343,14 @@ export class BusinessService {
       business.BusinessImage[0] ??
       null;
 
-    if (user && user.role === Role.Owner) {
-      let isFavorite: boolean = false;
-      try {
-        const favorite = await this.favoriteBusinessService.findOne(
-          user.sub,
-          business.id,
-        );
-        if (favorite) {
-          isFavorite = true;
-        }
-      } catch (err) {
-        console.log(err);
-      }
-      return { ...business, mainImage, isFavorite };
+    if (user?.sub) {
+      const favorite = await this.prisma.favoriteBusiness.findUnique({
+        where: {
+          userId_businessId: { userId: user.sub, businessId: business.id },
+        },
+        select: { businessId: true },
+      });
+      return { ...business, mainImage, isFavorite: !!favorite };
     }
 
     return { ...business, mainImage };
@@ -400,12 +435,35 @@ export class BusinessService {
   }
 
   async updateStatus(id: string, body: UpdateBusinessStatusDto) {
-    return await this.prisma.business.update({
+    const isRejected = body.status === BusinessStatus.REJECTED;
+    const business = await this.prisma.business.update({
       where: { id },
       data: {
         status: body.status,
+        // دلیل فقط برای رد شدن معنا دارد؛ با تایید پاک می‌شود
+        statusReason: isRejected ? (body.reason?.trim() ?? null) : null,
       },
     });
+
+    // اعلان + پیامک برای مالک؛ در حالت رد، دلیل هم فرستاده می‌شود
+    const content = isRejected
+      ? notificationTemplates.BUSINESS_REJECTED(
+          business.title,
+          business.statusReason,
+        )
+      : notificationTemplates.BUSINESS_APPROVED(business.title);
+    await this.notificationService.notify({
+      type: isRejected
+        ? NotificationType.BUSINESS_REJECTED
+        : NotificationType.BUSINESS_APPROVED,
+      audience: NotificationAudience.BUSINESS_OWNER,
+      businessId: business.id,
+      sendSms: true,
+      data: { businessId: business.id },
+      ...content,
+    });
+
+    return business;
   }
 
   async remove(id: string) {
@@ -557,8 +615,10 @@ export class BusinessService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return this.businessReviewService.withStats(
+    const businesses = await this.businessReviewService.withStats(
       favorites.map((f) => f.business),
     );
+    // همه‌ی این‌ها به‌تعریف در علاقه‌مندی‌های همین کاربر هستند
+    return businesses.map((business) => ({ ...business, isFavorite: true }));
   }
 }

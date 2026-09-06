@@ -15,24 +15,27 @@ model Role {
 
 /// تمام کاربران سیستم
 model User {
-  id                 String             @id @default(uuid()) @db.Char(36)
-  email              String?
-  passwordHash       String?
-  name               String?
-  phone              String             @unique
-  isActive           Boolean            @default(true)
-  metadata           Json?
-  roleId             Int
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  auditLogs          AuditLog[]
-  businesses         Business[]
-  favoriteBusinesses FavoriteBusiness[]
-  orders             Order[]
-  reviews            Review[]
-  stockReservations  StockReservation[]
-  role               Role               @relation(fields: [roleId], references: [id])
-  businessReviews    BusinessReview[]
+  id                    String                  @id @default(uuid()) @db.Char(36)
+  email                 String?
+  passwordHash          String?
+  name                  String?
+  phone                 String                  @unique
+  isActive              Boolean                 @default(true)
+  metadata              Json?
+  roleId                Int
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  auditLogs             AuditLog[]
+  businesses            Business[]
+  favoriteBusinesses    FavoriteBusiness[]
+  orders                Order[]
+  reviews               Review[]
+  stockReservations     StockReservation[]
+  role                  Role                    @relation(fields: [roleId], references: [id])
+  businessReviews       BusinessReview[]
+  notifications         NotificationRecipient[]
+  createdNotifications  Notification[]          @relation("NotificationCreatedBy")
+  approvedNotifications Notification[]          @relation("NotificationApprovedBy")
 
   @@index([roleId], map: "User_roleId_fkey")
 }
@@ -68,6 +71,9 @@ model Business {
   businessReviews BusinessReview[]
   socialLinks     BusinessSocialLink[]
   reports         BusinessReport[]
+  notifications   Notification[]
+  /// دلیل رد شدن کسب‌وکار توسط ادمین — در اعلانِ رد برای مالک هم ارسال می‌شود
+  statusReason    String?              @db.Text
 
   @@index([status, createdAt])
   @@index([ownerId, status])
@@ -434,4 +440,100 @@ model BlogPost {
 
   @@index([categoryId])
   @@index([status, publishedAt])
+}
+/// نوع اعلان — رویدادی که اعلان را ایجاد کرده است
+enum NotificationType {
+  BUSINESS_CREATED // کسب‌وکار جدید ثبت شد (برای ادمین)
+  BUSINESS_APPROVED // کسب‌وکار تایید شد (برای مالک)
+  BUSINESS_REJECTED // کسب‌وکار رد شد (برای مالک، همراه با دلیل)
+  REVIEW_CREATED // نظر جدید روی کسب‌وکار (برای مالک — بدون پیامک)
+  BUSINESS_REPORT_CREATED // گزارش اصلاح اطلاعات (برای ادمین)
+  USER_WELCOME // خوش‌آمدگویی ثبت‌نام
+  CUSTOM // اعلان دستی که ادمین یا مالک ساخته است
+}
+
+/// مخاطبان اعلان — در زمان ارسال به لیست کاربر تبدیل می‌شود
+enum NotificationAudience {
+  USERS // فهرست مشخصی از کاربران (userIds)
+  ADMINS // همه‌ی ادمین‌ها
+  ALL_USERS // همه‌ی کاربران فعال
+  BUSINESS_OWNER // مالک یک کسب‌وکار مشخص
+  BUSINESS_FAVORITES // کاربرانی که یک کسب‌وکار را نشان کرده‌اند
+}
+
+/// وضعیت چرخه‌ی عمر اعلان
+enum NotificationStatus {
+  PENDING_APPROVAL // ساخته‌ی مالک؛ تا تایید ادمین ارسال نمی‌شود
+  REJECTED // ادمین رد کرده — هرگز ارسال نمی‌شود
+  QUEUED // تایید شده و در صف پخش
+  SENT // گیرنده‌ها ساخته شدند (پیامک‌ها ممکن است هنوز در صف باشند)
+  FAILED // پخش با خطا مواجه شد
+}
+
+/// وضعیت ارسال پیامک برای هر گیرنده (صف outbox)
+enum NotificationSmsStatus {
+  NONE // برای این اعلان پیامک درخواست نشده
+  PENDING // در صف ارسال
+  SENT // ارسال شد
+  FAILED // بعد از چند تلاش ناموفق ماند
+  SKIPPED // شماره‌ای نبود یا کاربر غیرفعال بود
+}
+
+/// یک «اعلان» = یک محتوا + مخاطب؛ توزیع آن در NotificationRecipient ذخیره می‌شود
+model Notification {
+  id         String               @id @default(uuid()) @db.Char(36)
+  type       NotificationType     @default(CUSTOM)
+  title      String
+  body       String               @db.Text
+  audience   NotificationAudience
+  status     NotificationStatus   @default(QUEUED)
+  sendSms    Boolean              @default(false) // آیا علاوه بر اعلان، پیامک هم برود
+  smsText    String?              @db.Text // متن پیامک؛ خالی باشد از title/body ساخته می‌شود
+  data       Json? // payload برای لینک‌دهی در کلاینت (مثلاً businessId)
+  businessId String?              @db.Char(36) // کسب‌وکار مرتبط (context یا مخاطب)
+  business   Business?            @relation(fields: [businessId], references: [id], onDelete: SetNull)
+
+  createdById     String?   @db.Char(36) // null یعنی اعلان سیستمی
+  createdBy       User?     @relation("NotificationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedById    String?   @db.Char(36)
+  approvedBy      User?     @relation("NotificationApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt      DateTime?
+  rejectionReason String?   @db.Text
+
+  recipientsCount Int       @default(0) // برای گزارش پنل، بدون count روی جدول گیرنده‌ها
+  sentAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  recipients NotificationRecipient[]
+
+  @@index([status, createdAt])
+  @@index([type, createdAt])
+  @@index([createdById, createdAt])
+  @@index([businessId])
+}
+
+/// نسخه‌ی هر کاربر از یک اعلان + وضعیت پیامک همان کاربر (صف ارسال)
+model NotificationRecipient {
+  id             String       @id @default(uuid()) @db.Char(36)
+  notificationId String       @db.Char(36)
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId         String       @db.Char(36)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  smsStatus   NotificationSmsStatus @default(NONE)
+  smsAttempts Int                   @default(0)
+  smsError    String?               @db.Text
+  smsSentAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([notificationId, userId])
+  // صندوق کاربر و شمارش نخوانده‌ها با همین ایندکس جواب می‌گیرد
+  @@index([userId, isRead, createdAt])
+  // برداشت دسته‌ای صف پیامک
+  @@index([smsStatus, smsAttempts, createdAt])
 }

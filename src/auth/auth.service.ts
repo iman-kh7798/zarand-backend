@@ -7,6 +7,9 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { RoleService } from 'src/role/role.service';
 import { UserService } from 'src/users/users.service';
+import { NotificationService } from 'src/notification/notification.service';
+import { notificationTemplates } from 'src/notification/notification.templates';
+import { NotificationAudience, NotificationType } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -14,6 +17,7 @@ export class AuthService {
     private usersService: UserService,
     private roleService: RoleService,
     private jwtService: JwtService,
+    private notificationService: NotificationService,
   ) {}
 
   testPhone = ['09212921488', '09376551218', '09302207762'];
@@ -73,6 +77,8 @@ export class AuthService {
         name: null,
       });
       isNewUser = true;
+      // اعلان + پیامک خوش‌آمدگویی برای کاربر تازه‌ثبت‌نام‌کرده
+      await this.sendWelcome(user.id, user.name);
     }
     await this.usersService.expireValidOtp(phone);
     const role = await this.roleService.findOne(user.roleId);
@@ -86,5 +92,17 @@ export class AuthService {
       access_token: await this.jwtService.signAsync(payload),
       isNewUser,
     };
+  }
+
+  /** خوش‌آمدگویی به کاربر تازه — best-effort، ثبت‌نام را به خطر نمی‌اندازد */
+  private async sendWelcome(userId: string, name: string | null) {
+    const content = notificationTemplates.USER_WELCOME(name);
+    await this.notificationService.notify({
+      type: NotificationType.USER_WELCOME,
+      audience: NotificationAudience.USERS,
+      userIds: [userId],
+      sendSms: true,
+      ...content,
+    });
   }
 }

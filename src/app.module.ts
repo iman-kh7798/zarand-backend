@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { BusinessModule } from './business/business.module';
@@ -18,6 +19,7 @@ import { BusinessReviewModule } from './business-review/business-review.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { BusinessReportModule } from './business-report/business-report.module';
 import { BlogModule } from './blog/blog.module';
+import { NotificationModule } from './notification/notification.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { WinstonModule } from 'nest-winston';
@@ -25,6 +27,8 @@ import { winstonConfig } from './config/winston.config';
 
 @Module({
   imports: [
+    // زمان‌بند داخلی — صف ارسال پیامکِ اعلان‌ها روی همین اجرا می‌شود
+    ScheduleModule.forRoot(),
     // محدودیت نرخ درخواست (ضد اسپم / brute-force). سقف سراسری ملایم است تا
     // استفاده‌ی عادی API را محدود نکند؛ مسیرهای حساس (auth، فرم‌های عمومی)
     // با @Throttle در کنترلر خودشان سخت‌گیرانه‌تر تنظیم شده‌اند.
@@ -48,6 +52,7 @@ import { winstonConfig } from './config/winston.config';
     FeedbackModule,
     BusinessReportModule,
     BlogModule,
+    NotificationModule,
     WinstonModule.forRoot(winstonConfig),
     // FavoriteBusinessModule,
   ],

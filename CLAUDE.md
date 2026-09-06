@@ -43,6 +43,7 @@ src/
   business/          project core — largest service (~433 lines)
   business-image/    business images
   business-review/   business rating & review + approval flow (business/:id/reviews and reviews/*)
+  notification/      اعلان‌ها: مدل Notification + صف پیامک (worker)
   business-report/   public "fix business info" reports (business-reports/*) — admin + owner (own only)
   categories/        tree categories + link to business
   favorite-business/ favorites (module not enabled in app.module; its service is used directly)
@@ -108,52 +109,82 @@ Token payload: `{ sub, phone, role, name }`.
 
 - `prisma/schema.prisma` — `datasource db` has **no `url`**; the connection goes through the `@prisma/adapter-mariadb` driver adapter in `PrismaService` using env vars `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME`. `DATABASE_URL` is only needed for the CLI (in `prisma.config.ts`).
   - Both paths (`PrismaService` and `seed.ts`) fall back to `localhost:3306`. Make sure `DATABASE_URL` and `DATABASE_HOST` point to the same server.
-- Models: `Role, User, Business, BusinessSocialLink, FavoriteBusiness, Category, Product, ProductImage, BusinessImage, ProductVariant, Order, OrderItem, Review, BusinessReview, StockReservation, AuditLog, Otp, Feedback, BusinessReport, BlogCategory, BlogPost`.
+- Models: `Notification, NotificationRecipient, Role, User, Business, BusinessSocialLink, FavoriteBusiness, Category, Product, ProductImage, BusinessImage, ProductVariant, Order, OrderItem, Review, BusinessReview, StockReservation, AuditLog, Otp, Feedback, BusinessReport, BlogCategory, BlogPost`.
   - `BusinessReview.status` is enum `BusinessReviewStatus` (`PENDING`/`APPROVED`/`REJECTED`) — replaced the old `isApproved` boolean (migration `20260902160000_review_status_enum`, which backfills `isApproved=true` → `APPROVED`).
   - Order/cart (`Order`, `OrderItem`, `StockReservation`) exist in the schema but have **no module/route**.
 - Keys: `String @db.Char(36)` with `uuid()`; `Role.id` is an integer (1=ADMIN, 2=OWNER, 3=USER per `seed.ts`).
 - `Business.status`: `PENDING | APPROVED | REJECTED`. Anonymous users only see `APPROVED`.
 - After a schema change: `npx prisma migrate dev --name ...` then `npm run generate`.
+  <<<<<<< HEAD
 - Migrations: `0_init`, `20260827120000_review_approval_and_remove_user_role`, `20260902144603_add_feedback`, `20260902150406_add_business_report`, `20260902160000_review_status_enum`, `20260903120000_business_image_is_primary`, `20260904120000_add_blog_module`.
+  \=======
+- Migrations: `0_init`, `20260827120000_review_approval_and_remove_user_role`, `20260902144603_add_feedback`, `20260902150406_add_business_report`, `20260902160000_review_status_enum`, `20260903120000_business_image_is_primary`, `20260903140000_add_notifications`.
+
+> > > > > > > 2077b8670efa606c53621c55f9ebed7696e7174c
+
 - ⚠️ The DB is not reachable from my dev environment, so `migrate dev` cannot run. To create a new migration without a DB:
   `npx prisma migrate diff --from-schema <old-schema> --to-schema prisma/schema.prisma --script`
   (in Prisma 7 the flags are `--from-schema`/`--to-schema`, not `--from-schema-datamodel`.)
 
 ## Route map (summary)
 
-| Path                                                                                 | Method               | Access                                                             |
-| ------------------------------------------------------------------------------------ | -------------------- | ------------------------------------------------------------------ |
-| `auth/send-phone`, `auth/verify-code`                                                | POST                 | public                                                             |
-| `business`                                                                           | GET                  | Optional auth — anon sees only APPROVED; OWNER sees only their own |
-| `business`                                                                           | POST                 | OWNER (multipart, up to 10 images)                                 |
-| `business/:id`                                                                       | GET / PATCH / DELETE | Optional / ADMIN+OWNER                                             |
-| `business/:id/status`                                                                | PATCH                | ADMIN                                                              |
-| `business/:id/upload-images`, `:businessId/image/:imageId`                           | POST/PATCH/DELETE    | OWNER                                                              |
-| `business/:id/favorite`, `business/favorites/me`                                     | POST/DELETE/GET      | logged in                                                          |
-| `business/:businessId/reviews`                                                       | POST                 | logged in                                                          |
-| `business/:businessId/reviews`                                                       | GET                  | public — only approved (+ the logged-in user's own review)         |
-| `reviews`                                                                            | GET                  | OWNER (own business only) / ADMIN (all) — management list          |
-| `reviews/:id/status`                                                                 | PATCH                | OWNER (own business) / ADMIN — body `{ status: PENDING\|APPROVED\|REJECTED }` |
-| `reviews/:id`                                                                        | PUT / DELETE         | only the review's own author                                       |
-| `categories`, `categories/:id`, `categories/slug/:slug`, `categories/:id/businesses` | GET                  | public                                                             |
-| `categories` (POST/PATCH/DELETE), `categories/business/set`                          | —                    | ADMIN (setting a category: ADMIN+OWNER)                            |
-| `users` CRUD                                                                         | —                    | ADMIN; `users/profile` (GET/POST) for all logged-in users          |
-| `role`                                                                               | GET                  | ADMIN                                                              |
-| `feedback`                                                                           | POST                 | public — site suggestion/feedback form (name, contact?, message)   |
-| `feedback`, `feedback/:id`, `feedback/:id/read`                                       | GET / PATCH / DELETE | ADMIN — list (take/skip/lastId/search/isRead), view, mark read, delete |
+| Path                                                                                 | Method               | Access                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------ | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth/send-phone`, `auth/verify-code`                                                | POST                 | public                                                                                                                                                                                  |
+| `business`                                                                           | GET                  | Optional auth — anon sees only APPROVED; OWNER sees only their own                                                                                                                      |
+| `business`                                                                           | POST                 | OWNER (multipart, up to 10 images)                                                                                                                                                      |
+| `business/:id`                                                                       | GET / PATCH / DELETE | Optional / ADMIN+OWNER                                                                                                                                                                  |
+| `business/:id/status`                                                                | PATCH                | ADMIN                                                                                                                                                                                   |
+| `business/:id/upload-images`, `:businessId/image/:imageId`                           | POST/PATCH/DELETE    | OWNER                                                                                                                                                                                   |
+| `business/:id/favorite`, `business/favorites/me`                                     | POST/DELETE/GET      | logged in                                                                                                                                                                               |
+| `business/:businessId/reviews`                                                       | POST                 | logged in                                                                                                                                                                               |
+| `business/:businessId/reviews`                                                       | GET                  | public — only approved (+ the logged-in user's own review)                                                                                                                              |
+| `reviews`                                                                            | GET                  | OWNER (own business only) / ADMIN (all) — management list                                                                                                                               |
+| `reviews/:id/status`                                                                 | PATCH                | OWNER (own business) / ADMIN — body `{ status: PENDING\|APPROVED\|REJECTED }`                                                                                                           |
+| `reviews/:id`                                                                        | PUT / DELETE         | only the review's own author                                                                                                                                                            |
+| `categories`, `categories/:id`, `categories/slug/:slug`, `categories/:id/businesses` | GET                  | public                                                                                                                                                                                  |
+| `categories` (POST/PATCH/DELETE), `categories/business/set`                          | —                    | ADMIN (setting a category: ADMIN+OWNER)                                                                                                                                                 |
+| `users` CRUD                                                                         | —                    | ADMIN; `users/profile` (GET/POST) for all logged-in users                                                                                                                               |
+| `role`                                                                               | GET                  | ADMIN                                                                                                                                                                                   |
+| `feedback`                                                                           | POST                 | public — site suggestion/feedback form (name, contact?, message)                                                                                                                        |
+| `feedback`, `feedback/:id`, `feedback/:id/read`                                      | GET / PATCH / DELETE | ADMIN — list (take/skip/lastId/search/isRead), view, mark read, delete                                                                                                                  |
 | `business-reports`                                                                   | POST                 | public — "fix business info" form (`businessId`, `type`, `description?`); `description` required unless `type` is `BUSINESS_CLOSED`/`DUPLICATE`; texts the business owner (best-effort) |
-| `business-reports`, `business-reports/:id`                                            | GET                  | ADMIN (all) / OWNER (own businesses only) — filters take/skip/lastId/businessId/type/status/isRead/search |
-| `business-reports/:id/status`, `business-reports/:id/read`                            | PATCH                | ADMIN / OWNER (own business) — set status (`PENDING`/`RESOLVED`/`REJECTED`) or read flag |
-| `business-reports/:id`                                                               | DELETE               | ADMIN                                                              |
-| `blog`                                                                               | GET                  | public — only `PUBLISHED`; `categorySlug`/`search`/`take`/`skip`     |
-| `blog/admin`                                                                         | GET                  | ADMIN (same guard as `POST /blog`) — all statuses, `createdAt` desc; filters `status`/`categoryId`/`search`/`take`/`skip`; same `{ posts, page }` shape |
-| `blog/categories`                                                                    | GET                  | public — id/name/slug list                                          |
-| `blog/:idOrSlug`                                                                     | GET                  | public (optional auth) — resolves by slug then id; DRAFT visible only to ADMIN; bumps view for non-admins only |
-| `blog` (POST), `blog/:id` (PATCH/DELETE)                                             | —                    | ADMIN                                                              |
-| `blog/categories` (POST), `blog/categories/:id` (PATCH/DELETE)                       | —                    | ADMIN — DELETE fails if category has posts                          |
-| `blog/upload-cover`                                                                  | POST                 | ADMIN — multipart field `file` (jpg/png/webp, 5MB) → `{ url }`      |
-| `favorite-businesses/*`                                                              | —                    | logged in (module not registered)                                  |
-| `products/*`, `product-image/*`                                                      | —                    | **inactive** (module commented out in app.module)                  |
+| `business-reports`, `business-reports/:id`                                           | GET                  | ADMIN (all) / OWNER (own businesses only) — filters take/skip/lastId/businessId/type/status/isRead/search                                                                               |
+| `business-reports/:id/status`, `business-reports/:id/read`                           | PATCH                | ADMIN / OWNER (own business) — set status (`PENDING`/`RESOLVED`/`REJECTED`) or read flag                                                                                                |
+| `business-reports/:id`                                                               | DELETE               | ADMIN                                                                                                                                                                                   |
+| `blog`                                                                               | GET                  | public — only `PUBLISHED`; `categorySlug`/`search`/`take`/`skip`                                                                                                                        |
+| `blog/admin`                                                                         | GET                  | ADMIN (same guard as `POST /blog`) — all statuses, `createdAt` desc; filters `status`/`categoryId`/`search`/`take`/`skip`; same `{ posts, page }` shape                                 |
+| `blog/categories`                                                                    | GET                  | public — id/name/slug list                                                                                                                                                              |
+| `blog/:idOrSlug`                                                                     | GET                  | public (optional auth) — resolves by slug then id; DRAFT visible only to ADMIN; bumps view for non-admins only                                                                          |
+| `blog` (POST), `blog/:id` (PATCH/DELETE)                                             | —                    | ADMIN                                                                                                                                                                                   |
+| `blog/categories` (POST), `blog/categories/:id` (PATCH/DELETE)                       | —                    | ADMIN — DELETE fails if category has posts                                                                                                                                              |
+| `blog/upload-cover`                                                                  | POST                 | ADMIN — multipart field `file` (jpg/png/webp, 5MB) → `{ url }`                                                                                                                          |
+| `notifications/me/stream`                                                            | GET (SSE)            | logged in — live channel; token via header **or** `?token=`                                                                                                                             |
+| `notifications/me`, `notifications/me/unread-count`                                  | GET                  | logged in — inbox + unread count                                                                                                                                                        |
+| `notifications/me/:id/read`, `notifications/me/read-all`                             | PATCH                | logged in (`:id` = recipient row id, not notification id)                                                                                                                               |
+| `notifications`                                                                      | POST                 | ADMIN (sends immediately) / OWNER (queued as PENDING_APPROVAL)                                                                                                                          |
+| `notifications`, `notifications/:id`                                                 | GET                  | ADMIN (all) / OWNER (only what they created)                                                                                                                                            |
+| `notifications/:id/approve`, `notifications/:id/reject`                              | PATCH                | ADMIN — approve dispatches it; reject takes `{ reason? }`                                                                                                                               |
+| `notifications/:id`                                                                  | DELETE               | ADMIN                                                                                                                                                                                   |
+| `favorite-businesses/*`                                                              | —                    | logged in (module not registered)                                                                                                                                                       |
+| `products/*`, `product-image/*`                                                      | —                    | **inactive** (module commented out in app.module)                                                                                                                                       |
+
+## Notifications
+
+Two tables: `Notification` (content + audience + status) and `NotificationRecipient`
+(one row per user = the in-app inbox **and** the SMS outbox).
+
+- `NotificationService.notify(input)` is the single entry point for system events. It never throws — a failed notification must not break the main flow.
+- Audience (`NotificationAudience`) is resolved to user ids with one query, then recipients are inserted with `createMany` in chunks of 500. Never insert per-user in a loop.
+- SMS is **not** sent inside the request. Recipient rows get `smsStatus: PENDING` and `NotificationSmsWorker` (an `@Interval` from `@nestjs/schedule`, batch of 50 every 20s, max 3 attempts) drains the queue via `SmsService.sendRaw`. `sendRaw` is the only SMS method that rejects on failure — the worker needs that for retries.
+- Anti-spam: `smsCooldownMinutes` on `notify()` turns SMS off (the in-app notification is still created) if a same-type SMS notification went out recently. Used for `BUSINESS_REPORT_CREATED` (`NOTIFICATION_REPORT_SMS_COOLDOWN_MIN`, default 30) on top of the throttler.
+- Texts live in `notification.templates.ts` — don't inline message strings in services.
+- Owner-created notifications are `PENDING_APPROVAL` and only reach `BUSINESS_FAVORITES` of a business they own; admin-created ones dispatch immediately.
+- Wired events: business created → ADMINS (+SMS), business approved/rejected → owner (+SMS, rejection includes `Business.statusReason`), new review/reply → owner (**no SMS**), business report → ADMINS (+SMS with cooldown), new signup → welcome (+SMS).
+- **Delivery is SSE, not polling.** `GET /notifications/me/stream` (`@Sse`) keeps one connection per tab open. Events: `connected`, `notification`, `read`, `read-all`, `ping` (every 25s so proxies don't drop an idle connection). The route uses `SseAuthGuard` (`src/auth/sse.guard.ts`) — same JWT, but it also accepts `?token=` because browser `EventSource` cannot send headers — and `@SkipThrottle()` so a long-lived stream isn't rate-limited.
+- `NotificationEventsService` is an in-process RxJS `Subject`. `dispatch()` calls `publishToStreams()`, which asks `filterConnected(userIds)` who is online and only then reads the recipient rows for those users — so a broadcast to offline users costs no extra query. `markRead`/`markAllRead` emit `read`/`read-all` so a user's other tabs stay in sync.
+- ⚠️ The bus (like the SMS worker) is per-process: with more than one instance, a user connected to instance A won't get an event emitted on instance B. That needs a Redis pub/sub fan-out (`ioredis` is already a dependency).
+- No web push yet — deliberately out of scope.
 
 ## Auth (OTP flow)
 
