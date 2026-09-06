@@ -80,9 +80,13 @@ export class CategoriesController {
       lastId,
     };
     if (user && user.role === Role.Admin) {
-      return this.categoriesService.getBusinessesByCategory(id, qr);
+      return this.categoriesService.getBusinessesByCategory(id, qr, user.sub);
     }
-    return this.categoriesService.getActiveBusinessesByCategory(id, qr);
+    return this.categoriesService.getActiveBusinessesByCategory(
+      id,
+      qr,
+      user?.sub,
+    );
   }
 
   @ApiBearerAuth('access-token')
