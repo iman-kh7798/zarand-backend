@@ -18,6 +18,7 @@ import { SmsModule } from './sms/sms.module';
 import { BusinessReviewModule } from './business-review/business-review.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { BusinessReportModule } from './business-report/business-report.module';
+import { BlogModule } from './blog/blog.module';
 import { NotificationModule } from './notification/notification.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
@@ -50,6 +51,7 @@ import { winstonConfig } from './config/winston.config';
     BusinessReviewModule,
     FeedbackModule,
     BusinessReportModule,
+    BlogModule,
     NotificationModule,
     WinstonModule.forRoot(winstonConfig),
     // FavoriteBusinessModule,
