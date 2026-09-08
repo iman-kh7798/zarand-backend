@@ -84,6 +84,21 @@ export class UserService {
     });
   }
 
+  // بررسی شماره موبایل + پسورد برای لاگین. اگر درست بود کاربر بدون passwordHash برمی‌گردد، وگرنه null
+  async verifyCredentials(phone: string, password: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { phone },
+      include: { role: true },
+    });
+    if (!user || !user.passwordHash) return null;
+
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) return null;
+
+    const { passwordHash, ...safeUser } = user;
+    return safeUser;
+  }
+
   // آپدیت یوزر: اگر password فرستاده شد، هش کن؛ اگر نه، دست نزن
   async update(id: string, dto: UpdateUserDto) {
     let passwordHash: string | undefined = undefined;

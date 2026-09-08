@@ -1,7 +1,12 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
-import { SendPhoneDto, VerifyCodeDto } from './dto/auth.dto';
+import {
+  SendPhoneDto,
+  SignInDto,
+  SignUpDto,
+  VerifyCodeDto,
+} from './dto/auth.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -21,5 +26,21 @@ export class AuthController {
   @Post('verify-code')
   verifyCode(@Body() verifyCode: VerifyCodeDto) {
     return this.authService.verifyCode(verifyCode.phone, verifyCode.code);
+  }
+
+  // ثبت‌نام با شماره موبایل + پسورد + کد تایید
+  @Throttle({ default: { ttl: 600_000, limit: 10 } })
+  @HttpCode(HttpStatus.OK)
+  @Post('register')
+  register(@Body() signUp: SignUpDto) {
+    return this.authService.register(signUp);
+  }
+
+  // ورود با شماره موبایل + پسورد — سقف برای جلوگیری از brute-force
+  @Throttle({ default: { ttl: 600_000, limit: 10 } })
+  @HttpCode(HttpStatus.OK)
+  @Post('login')
+  login(@Body() signIn: SignInDto) {
+    return this.authService.login(signIn.phone, signIn.password);
   }
 }

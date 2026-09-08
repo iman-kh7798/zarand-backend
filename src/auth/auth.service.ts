@@ -10,6 +10,7 @@ import { UserService } from 'src/users/users.service';
 import { NotificationService } from 'src/notification/notification.service';
 import { notificationTemplates } from 'src/notification/notification.templates';
 import { NotificationAudience, NotificationType } from '@prisma/client';
+import { SignUpDto } from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -92,6 +93,80 @@ export class AuthService {
       access_token: await this.jwtService.signAsync(payload),
       isNewUser,
     };
+  }
+
+  /**
+   * ثبت‌نام با شماره موبایل + پسورد + کد تایید.
+   * ابتدا کد پیامکی (که با auth/send-phone فرستاده شده) بررسی می‌شود،
+   * سپس در صورت آزاد بودن شماره، کاربر با همان پسورد ساخته می‌شود و توکن برمی‌گردد.
+   */
+  async register(dto: SignUpDto) {
+    const { phone, password, name, code } = dto;
+
+    const isTestOtp = this.testPhone.includes(phone) && code === '123456';
+    const otp = await this.usersService.findValidOtp(phone, code);
+    if (!otp && !isTestOtp) {
+      throw new UnauthorizedException('INVALID_OR_EXPIRED_CODE');
+    }
+
+    const existing = await this.usersService.findByPhone(phone);
+    if (existing) {
+      throw new BadRequestException('PHONE_EXISTS');
+    }
+
+    let user:
+      | { phone: string; roleId: number; id: string; name: string | null }
+      | undefined;
+    try {
+      user = await this.usersService.create({
+        phone,
+        roleId: 2,
+        password,
+        name: name ?? null,
+      });
+    } catch (error: any) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (error.code === 'P2002') {
+        throw new BadRequestException('PHONE_EXISTS');
+      }
+    }
+
+    if (!user) {
+      throw new ServiceUnavailableException('UNABLE_TO_CREATE_USER');
+    }
+
+    await this.usersService.expireValidOtp(phone);
+    // اعلان + پیامک خوش‌آمدگویی برای کاربر تازه‌ثبت‌نام‌کرده
+    await this.sendWelcome(user.id, user.name);
+
+    const role = await this.roleService.findOne(user.roleId);
+    const payload = {
+      sub: user.id,
+      phone: user.phone,
+      role: role.name,
+      name: user.name ?? '',
+    };
+    return {
+      access_token: await this.jwtService.signAsync(payload),
+      isNewUser: true,
+    };
+  }
+
+  /** ورود با شماره موبایل + پسورد */
+  async login(phone: string, password: string) {
+    const user = await this.usersService.verifyCredentials(phone, password);
+    if (!user) {
+      throw new UnauthorizedException('INVALID_CREDENTIALS');
+    }
+
+    const role = await this.roleService.findOne(user.roleId);
+    const payload = {
+      sub: user.id,
+      phone: user.phone,
+      role: role.name,
+      name: user.name ?? '',
+    };
+    return { access_token: await this.jwtService.signAsync(payload) };
   }
 
   /** خوش‌آمدگویی به کاربر تازه — best-effort، ثبت‌نام را به خطر نمی‌اندازد */
