@@ -57,6 +57,23 @@ export class VerifyCodeDto {
   code: string;
 }
 
+export class ResetPasswordDto {
+  @IsNotEmpty()
+  @Matches(/^(\+98|0098|0)?9\d{9}$/, {
+    message: 'phone is not valid',
+  })
+  phone: string;
+
+  // کد تایید پیامکی که قبلاً با auth/send-phone فرستاده شده
+  @IsNotEmpty()
+  @IsString()
+  code: string;
+
+  @IsString()
+  @MinLength(8)
+  newPassword: string;
+}
+
 export class SendCodeDto {
   @IsNotEmpty()
   @IsString()

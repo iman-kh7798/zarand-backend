@@ -33,6 +33,9 @@ describe('AuthService', () => {
       saveVerificationCode: jest.fn(),
       findValidOtp: jest.fn(),
       expireValidOtp: jest.fn(),
+      getAuthStatus: jest
+        .fn()
+        .mockResolvedValue({ isNewUser: false, hasPassword: false }),
     };
     roleService = {
       findOne: jest.fn(),
@@ -140,13 +143,21 @@ describe('AuthService', () => {
         user.phone,
         expect.any(String),
       );
-      expect(result).toEqual({ message: 'sent' });
+      expect(result).toEqual({
+        message: 'sent',
+        isNewUser: false,
+        hasPassword: false,
+      });
     });
 
     it('returns the fixed test code for the whitelisted test phone number', async () => {
       const result = await service.sendPhone('09212921488');
 
-      expect(result).toEqual({ code: '123456' });
+      expect(result).toEqual({
+        code: '123456',
+        isNewUser: false,
+        hasPassword: false,
+      });
       expect(userService.saveVerificationCode).not.toHaveBeenCalled();
     });
   });

@@ -54,12 +54,19 @@ export class AuthService {
     return { access_token: await this.jwtService.signAsync(payload) };
   }
 
+  /**
+   * ارسال کد تایید — همزمان وضعیت شماره (کاربر جدیده یا نه، پسورد داره یا نه)
+   * رو برمی‌گردونه تا فرانت بتونه فلوی مناسب (ثبت‌نام/ورود با پسورد/فراموشی پسورد) رو نشون بده.
+   */
   async sendPhone(phone: string) {
+    const { isNewUser, hasPassword } =
+      await this.usersService.getAuthStatus(phone);
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     if (this.testPhone.includes(phone)) {
-      return { code: '123456' };
+      return { code: '123456', isNewUser, hasPassword };
     }
-    return this.usersService.saveVerificationCode(phone, code);
+    const result = await this.usersService.saveVerificationCode(phone, code);
+    return { ...result, isNewUser, hasPassword };
   }
 
   async verifyCode(phone: string, code: string) {
@@ -158,6 +165,35 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('INVALID_CREDENTIALS');
     }
+
+    const role = await this.roleService.findOne(user.roleId);
+    const payload = {
+      sub: user.id,
+      phone: user.phone,
+      role: role.name,
+      name: user.name ?? '',
+    };
+    return { access_token: await this.jwtService.signAsync(payload) };
+  }
+
+  /**
+   * فراموشی پسورد: کد تایید (که با همون auth/send-phone فرستاده شده) رو بررسی می‌کنه،
+   * پسورد جدید رو ست می‌کنه و مستقیم توکن برمی‌گردونه (لاگین خودکار بعد از ریست).
+   */
+  async resetPassword(phone: string, code: string, newPassword: string) {
+    const isTestOtp = this.testPhone.includes(phone) && code === '123456';
+    const otp = await this.usersService.findValidOtp(phone, code);
+    if (!otp && !isTestOtp) {
+      throw new UnauthorizedException('INVALID_OR_EXPIRED_CODE');
+    }
+
+    const user = await this.usersService.findByPhone(phone);
+    if (!user) {
+      throw new BadRequestException('USER_NOT_EXISTS');
+    }
+
+    await this.usersService.setPassword(user.id, newPassword);
+    await this.usersService.expireValidOtp(phone);
 
     const role = await this.roleService.findOne(user.roleId);
     const payload = {

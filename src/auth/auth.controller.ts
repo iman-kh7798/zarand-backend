@@ -2,6 +2,7 @@ import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import {
+  ResetPasswordDto,
   SendPhoneDto,
   SignInDto,
   SignUpDto,
@@ -42,5 +43,17 @@ export class AuthController {
   @Post('login')
   login(@Body() signIn: SignInDto) {
     return this.authService.login(signIn.phone, signIn.password);
+  }
+
+  // فراموشی پسورد: کد تایید همون auth/send-phone رو می‌گیره + پسورد جدید رو ست می‌کنه
+  @Throttle({ default: { ttl: 600_000, limit: 10 } })
+  @HttpCode(HttpStatus.OK)
+  @Post('reset-password')
+  resetPassword(@Body() resetPassword: ResetPasswordDto) {
+    return this.authService.resetPassword(
+      resetPassword.phone,
+      resetPassword.code,
+      resetPassword.newPassword,
+    );
   }
 }

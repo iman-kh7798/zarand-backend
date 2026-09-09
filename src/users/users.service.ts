@@ -166,12 +166,17 @@ export class UserService {
   }
 
   async updateProfile(id: string, dto: UpdateProfileDto) {
+    const passwordHash = dto.password
+      ? await bcrypt.hash(dto.password, SALT_ROUNDS)
+      : undefined;
+
     const user = await this.prisma.user.update({
       where: { id },
       data: {
         email: dto.email,
         name: dto.name,
         // فقط وقتی پسورد جدید داریم، این فیلد رو ست کن
+        ...(passwordHash && { passwordHash }),
       },
       include: {
         role: true,
@@ -180,6 +185,25 @@ export class UserService {
 
     const { passwordHash: _, ...safeUser } = user;
     return safeUser;
+  }
+
+  // برای فلوی initiate/forgot-password: بدون افشای اطلاعات کاربر، فقط وضعیت لازم برای فرانت رو برمی‌گردونه
+  async getAuthStatus(phone: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { phone },
+      select: { passwordHash: true },
+    });
+
+    return { isNewUser: !user, hasPassword: !!user?.passwordHash };
+  }
+
+  // ست کردن/تغییر پسورد بدون نیاز به پسورد قبلی — برای reset-password بعد از تایید OTP
+  async setPassword(id: string, password: string) {
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash },
+    });
   }
 
   async findValidOtp(phone: string, code: string) {
