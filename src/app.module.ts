@@ -18,6 +18,7 @@ import { SmsModule } from './sms/sms.module';
 import { BusinessReviewModule } from './business-review/business-review.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { BusinessReportModule } from './business-report/business-report.module';
+import { BusinessEventModule } from './business-event/business-event.module';
 import { BlogModule } from './blog/blog.module';
 import { NotificationModule } from './notification/notification.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -37,6 +38,10 @@ import { winstonConfig } from './config/winston.config';
       rootPath: join(__dirname, '..', '..', 'uploads'),
       serveRoot: '/uploads',
     }),
+    // BusinessEventModule باید قبل از BusinessModule بیاید: مسیر GET business/stats
+    // باید زودتر از GET business/:id در BusinessModule ثبت شود، وگرنه Express آن
+    // را به‌عنوان id="stats" به findOne کسب‌وکار می‌فرستد.
+    BusinessEventModule,
     BusinessModule,
     CategoriesModule,
     PrismaModule,

@@ -72,6 +72,7 @@ model Business {
   socialLinks     BusinessSocialLink[]
   reports         BusinessReport[]
   notifications   Notification[]
+  events          BusinessEvent[]
   /// دلیل رد شدن کسب‌وکار توسط ادمین — در اعلانِ رد برای مالک هم ارسال می‌شود
   statusReason    String?              @db.Text
 
@@ -398,6 +399,29 @@ model BusinessReport {
 
   @@index([businessId, createdAt])
   @@index([status, createdAt])
+}
+
+/// نوع رویداد سبک روی پروفایل کسب‌وکار (آنالیتیکس)
+enum BusinessEventType {
+  PROFILE_VIEW // بازدید پروفایل
+  PHONE_CLICK // تماس با شماره تلفن
+  SOCIAL_CLICK // کلیک روی شبکه‌ی اجتماعی
+}
+
+/// رویداد آنالیتیکسِ سبک روی پروفایل کسب‌وکار — بدون نیاز به لاگین، شناسه‌ی بازدیدکننده در کلاینت ساخته می‌شود
+model BusinessEvent {
+  id         String            @id @default(uuid()) @db.Char(36)
+  businessId String            @db.Char(36)
+  business   Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type       BusinessEventType
+  meta       Json? // مثلاً {"platform": "instagram"} برای social_click
+  visitorId  String // شناسه‌ی ناشناس ساخته‌شده در کلاینت (نه حساب کاربری)
+  createdAt  DateTime          @default(now())
+
+  // برای دیدوپلیکیت (businessId + visitorId + type در ۲۴ ساعت اخیر)
+  @@index([businessId, visitorId, type, createdAt])
+  // برای تجمیع آمار بر اساس بازه‌ی زمانی
+  @@index([businessId, type, createdAt])
 }
 
 /// وضعیت انتشار مقاله‌ی بلاگ
