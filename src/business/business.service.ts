@@ -42,7 +42,10 @@ export interface BusinessListFilters {
   ownerName?: string;
   categoryId?: string;
   categoryName?: string;
+  search?: string;
 }
+
+export type BusinessSort = 'newest' | 'rating' | 'name';
 
 @Injectable()
 export class BusinessService {
@@ -222,6 +225,11 @@ export class BusinessService {
   /**
    * لیست صفحه‌بندی‌شده‌ی کسب‌وکارها به همراه میانگین و تعداد نظرات هر کدام.
    * تنها نقطه‌ی اجرای کوئری لیست؛ `findBusinesses` فقط `where` را می‌سازد.
+   *
+   * `sort: 'rating'` را نمی‌شود با `ORDER BY` مستقیم روی Business پیاده کرد
+   * چون میانگین نظرات در جدول جدا و فقط از نظرهای APPROVED محاسبه می‌شود
+   * (`BusinessReviewService.getStatsFor`) — برای همین در آن حالت همه‌ی ردیف‌های
+   * منطبق با `where` می‌آیند، مرتب‌سازی و صفحه‌بندی در حافظه انجام می‌شود.
    */
   private async listBusinesses(
     where: Prisma.BusinessWhereInput | undefined,
@@ -229,19 +237,42 @@ export class BusinessService {
     skip: number,
     lastId: string | undefined,
     user?: { role: Role; sub: string },
+    sort: BusinessSort = 'newest',
   ) {
+    const include = {
+      owner: true,
+      BusinessImage: { orderBy: PRIMARY_IMAGE_ORDER },
+      category: true,
+    } as const;
+
+    if (sort === 'rating') {
+      const [total, allRows] = await Promise.all([
+        this.prisma.business.count({ where }),
+        this.prisma.business.findMany({ where, include }),
+      ]);
+      const withStats = await this.businessReviewService.withStats(allRows);
+      withStats.sort(
+        (a, b) =>
+          b.reviewsAverage - a.reviewsAverage ||
+          b.reviewsCount - a.reviewsCount,
+      );
+      const page = withStats.slice(skip, skip + take);
+      const businesses = await this.attachFavoriteFlags(page, user?.sub);
+      return { businesses, page: { total, take, skip } };
+    }
+
+    const orderBy: Prisma.BusinessOrderByWithRelationInput =
+      sort === 'name' ? { title: 'asc' } : { createdAt: 'desc' };
+
     const [total, rows] = await Promise.all([
       this.prisma.business.count({ where }),
       this.prisma.business.findMany({
         where,
         take,
         skip,
+        orderBy,
         ...(lastId ? { cursor: { id: lastId } } : {}),
-        include: {
-          owner: true,
-          BusinessImage: { orderBy: PRIMARY_IMAGE_ORDER },
-          category: true,
-        },
+        include,
       }),
     ]);
     const withStats = await this.businessReviewService.withStats(rows);
@@ -268,19 +299,18 @@ export class BusinessService {
     const where: Prisma.BusinessWhereInput = {};
     const isAdmin = user?.role === Role.Admin;
 
+    // ۱. تعیین شرط‌های پایه بر اساس نقش
     if (isAdmin) {
-      // فیلترهای مدیریتی فقط برای ادمین
       if (filters.status) where.status = filters.status;
       if (filters.isActive !== undefined) where.isActive = filters.isActive;
     } else if (user?.role === Role.Owner) {
-      // مالک فقط کسب‌وکارهای خودش را می‌بیند (همه‌ی وضعیت‌ها)
       where.ownerId = user.sub;
     } else {
-      // عمومی / ناشناس
       where.status = BusinessStatus.APPROVED;
       where.isActive = true;
     }
 
+    // ۲. فیلترهای اختصاصی
     if (filters.title) {
       where.title = { contains: filters.title };
     }
@@ -297,6 +327,28 @@ export class BusinessService {
       where.category = { name: { contains: filters.categoryName } };
     }
 
+    // ۳. اصلاح شرط جست‌وجوی عمومی (Search)
+    if (filters.search) {
+      const searchTerm = filters.search.trim();
+
+      // برای جلوگیری از تداخل OR با بقیه شرط‌های where، آن را داخل AND آرایه‌ای می‌گذاریم
+      const searchConditions: Prisma.BusinessWhereInput[] = [
+        { title: { contains: searchTerm } },
+        { description: { contains: searchTerm } },
+        { owner: { name: { contains: searchTerm } } },
+        { category: { name: { contains: searchTerm } } }, // افزودن نام دسته‌بندی به جستجو
+      ];
+
+      where.AND = [
+        ...(where.AND
+          ? Array.isArray(where.AND)
+            ? where.AND
+            : [where.AND]
+          : []),
+        { OR: searchConditions },
+      ];
+    }
+
     return where;
   }
 
@@ -310,6 +362,7 @@ export class BusinessService {
     skip: number,
     lastId: string | undefined,
     user?: { role: Role; sub: string },
+    sort?: BusinessSort,
   ) {
     return this.listBusinesses(
       this.buildListWhere(filters, user),
@@ -317,6 +370,7 @@ export class BusinessService {
       skip,
       lastId,
       user,
+      sort,
     );
   }
 

@@ -83,11 +83,13 @@ export class BusinessController {
         ownerName: query.ownerName,
         categoryId: query.categoryId,
         categoryName: query.categoryName,
+        search: query.search,
       },
       take,
       skip,
       cursor,
       req.user,
+      query.sort,
     );
   }
 

@@ -56,6 +56,22 @@ export class FindBusinessQueryDto extends PartialType(PaginationDto) {
   @IsOptional()
   @IsString()
   categoryName?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'جست‌وجوی یکپارچه (OR) روی عنوان، توضیحات و نام مالک کسب‌وکار',
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({
+    enum: ['newest', 'rating', 'name'],
+    description: 'ترتیب لیست؛ پیش‌فرض newest',
+  })
+  @IsOptional()
+  @IsIn(['newest', 'rating', 'name'])
+  sort?: 'newest' | 'rating' | 'name';
 }
 
 /** @deprecated از FindBusinessQueryDto استفاده کن */
