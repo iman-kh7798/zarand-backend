@@ -54,25 +54,45 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
         run: |
+          # trim accidental trailing whitespace/newlines/CR from secrets before using them
+          host="$(printf '%s' "$SSH_HOST" | tr -d '[:space:]')"
+          port="$(printf '%s' "$SSH_PORT" | tr -d '[:space:]')"
+          echo "SSH_HOST_CLEAN=$host" >> "$GITHUB_ENV"
+          echo "SSH_PORT_CLEAN=$port" >> "$GITHUB_ENV"
+
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -p "$port" "$host" >> ~/.ssh/known_hosts
 
       - name: Copy compose file to VPS
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          APP_PATH: ${{ secrets.APP_PATH }}
         run: |
+          user="$(printf '%s' "$SSH_USER" | tr -d '[:space:]')"
+          app_path="$(printf '%s' "$APP_PATH" | tr -d '[:space:]')"
           rsync -avz \
-            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }}" \
+            -e "ssh -i ~/.ssh/deploy_key -p ${SSH_PORT_CLEAN}" \
             ./docker-compose.prod.yml \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.APP_PATH }}/docker-compose.prod.yml
+            "${user}@${SSH_HOST_CLEAN}:${app_path}/docker-compose.prod.yml"
 
       - name: Pull new image and restart
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          APP_PATH: ${{ secrets.APP_PATH }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
         run: |
-          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "cd ${{ secrets.APP_PATH }} && \
-             sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=${{ needs.build-and-push.outputs.image_tag }}/' .env && \
+          user="$(printf '%s' "$SSH_USER" | tr -d '[:space:]')"
+          app_path="$(printf '%s' "$APP_PATH" | tr -d '[:space:]')"
+          ssh -i ~/.ssh/deploy_key -p "${SSH_PORT_CLEAN}" "${user}@${SSH_HOST_CLEAN}" \
+            "cd '${app_path}' && \
+             sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/' .env && \
              docker compose -f docker-compose.prod.yml pull && \
              docker compose -f docker-compose.prod.yml up -d && \
              docker image prune -f"
