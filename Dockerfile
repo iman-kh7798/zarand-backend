@@ -13,7 +13,7 @@
 ###############################################################################
 
 ########################  base  ###############################################
-FROM node:20-alpine AS base
+FROM node:24-alpine AS base
 # openssl + libc6-compat are required by the Prisma schema engine on musl/Alpine.
 RUN apk add --no-cache openssl libc6-compat
 WORKDIR /app
