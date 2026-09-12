@@ -12,6 +12,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: WinstonModule.createLogger(winstonConfig),
   });
+
   // پشت پروکسی cPanel اجرا می‌شود؛ برای گرفتن IP واقعی کلاینت (throttler)
   app.set('trust proxy', 1);
   const config = new DocumentBuilder()
