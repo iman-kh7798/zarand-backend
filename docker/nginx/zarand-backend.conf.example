@@ -1,0 +1,39 @@
+# Host-level nginx reverse proxy for zarand-backend (runs OUTSIDE docker, on the VPS itself).
+#
+# Setup on the VPS (Ubuntu/Debian):
+#   sudo apt install nginx certbot python3-certbot-nginx
+#   sudo cp zarand-backend.conf.example /etc/nginx/sites-available/zarand-backend.conf
+#   # edit server_name below to your real domain first
+#   sudo ln -s /etc/nginx/sites-available/zarand-backend.conf /etc/nginx/sites-enabled/
+#   sudo nginx -t && sudo systemctl reload nginx
+#   sudo certbot --nginx -d api.example.com    # obtains + wires up SSL, auto-renews via systemd timer
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.example.com;
+
+    client_max_body_size 10m; # matches the 5MB per-file upload limit with headroom for multipart overhead
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # SSE stream (notifications/me/stream) must not be buffered
+    location /notifications/me/stream {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 1h;
+    }
+}

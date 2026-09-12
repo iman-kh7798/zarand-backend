@@ -1,0 +1,75 @@
+# docker-compose.prod.yml — VPS deployment (pulls a prebuilt image, no build context needed)
+#
+# This is the ONLY compose file that needs to exist on the VPS. GitHub Actions
+# builds the image and pushes it to GHCR; this file just pulls + runs it.
+#
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Config comes from a `.env` file next to this one on the VPS
+# (copy .env.docker.example -> .env and fill in real values, plus GHCR_IMAGE/IMAGE_TAG).
+# That .env is created by hand on the server — it is never committed or synced by CI.
+
+services:
+  db:
+    image: mariadb:11.4
+    container_name: zarand-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DATABASE_NAME:-zarand}
+      MARIADB_USER: ${DATABASE_USER:-zarand}
+      MARIADB_PASSWORD: ${DATABASE_PASSWORD:-zarand_pass}
+      MARIADB_ROOT_PASSWORD: ${DATABASE_ROOT_PASSWORD:-root_pass}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    # no ports published — only the backend container needs to reach it
+
+  backend:
+    image: ${GHCR_IMAGE:?set GHCR_IMAGE in .env, e.g. ghcr.io/iman-kh7798/zarand-backend}:${IMAGE_TAG:-latest}
+    container_name: zarand-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+
+      DATABASE_HOST: db
+      DATABASE_PORT: 3306
+      DATABASE_USER: ${DATABASE_USER:-zarand}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-zarand_pass}
+      DATABASE_NAME: ${DATABASE_NAME:-zarand}
+      DATABASE_URL: "mysql://${DATABASE_USER:-zarand}:${DATABASE_PASSWORD:-zarand_pass}@db:3306/${DATABASE_NAME:-zarand}"
+
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-3600s}
+
+      KAVENEGAR_API_KEY: ${KAVENEGAR_API_KEY:-}
+      KAVENEGAR_SENDER: ${KAVENEGAR_SENDER:-10008663}
+
+      # only seed once, by hand: RUN_SEED=true docker compose -f docker-compose.prod.yml up -d
+      RUN_SEED: ${RUN_SEED:-false}
+    ports:
+      # bound to localhost only — nginx on the host is the public entry point
+      - "127.0.0.1:${BACKEND_PORT:-3000}:3000"
+    volumes:
+      - uploads_data:/app/uploads
+      - logs_data:/app/logs
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/api',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+volumes:
+  db_data:
+  uploads_data:
+  logs_data:
