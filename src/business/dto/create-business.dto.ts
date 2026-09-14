@@ -12,6 +12,7 @@ import {
   ArrayMaxSize,
   ValidateNested,
   ValidateIf,
+  Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -37,7 +38,13 @@ export class CreateBusinessDto {
   @IsOptional()
   address?: string;
 
-  @IsNumberString()
+  /**
+   * شماره تماس کسب‌وکار: موبایل، تلفن ثابت با پیش‌شماره یا بدون پیش‌شماره.
+   */
+  @IsString()
+  @Matches(/^(?:(?:\+98|0098|0)?9\d{9}|0\d{9,10}|\d{7,8})$/, {
+    message: 'phone is not valid',
+  })
   phone: string;
 
   @IsUUID()
