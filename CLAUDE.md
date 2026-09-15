@@ -203,7 +203,17 @@ Token secret and expiry come from env (`JWT_SECRET` is required — the app fail
 
 ## Deploy
 
-`.github/workflows/deploy.yml` — on push to `dev`: build, then rsync `dist/` + `package.json` to cPanel over SSH and `touch tmp/restart.txt`. So **the code must build or the deploy breaks** → always run `npm run build` before committing to `dev`.
+`.github/workflows/deploy.yml` — on push to `dev`: builds a Docker image, pushes it to GHCR, rsyncs `docker-compose.prod.yml` to the VPS, then over SSH runs `docker compose -f docker-compose.prod.yml pull && up -d` (config comes from a hand-created `.env` next to that file on the server — never committed). **The code must build (`npm run build`) or the deploy breaks.**
+
+(Older docs mentioned rsyncing `dist/` to cPanel — that is no longer how this deploys; the workflow now builds a container image.)
+
+### Shared network with the frontend (`sevaa_shared`)
+
+This backend is consumed by a **separate repo**, `zarand-frontend` (Next.js, deployed at `sevaa.ir` on the same VPS, this API at `api.sevaa.ir`). The frontend's server calls this backend for every `/api/proxy/*` request its own browser clients make.
+
+- `sevaa.ir` and `api.sevaa.ir` resolve to the **same VPS public IP**. If the frontend's server-side code called `https://api.sevaa.ir` directly from inside a container on that same VPS, it's a hairpin/loopback request that many VPS/Docker network setups never complete — it just hangs until the caller's own client times out. This actually happened (2026-09-15): `/api/proxy/*` requests sat "pending" in the browser for ~20s then got cancelled.
+- Fix: this backend's container (`container_name: zarand-backend` in `docker-compose.prod.yml`) joins an **external Docker network named `sevaa_shared`**, and the frontend's deploy joins the same network and calls this container by name (`http://zarand-backend:3000`) for server-to-server requests instead of the public domain. `deploy.yml` creates the network if missing (`docker network inspect sevaa_shared >/dev/null 2>&1 || docker network create sevaa_shared`) so this is hands-off on future deploys.
+- If this backend's `container_name` or the network name ever changes, the frontend repo's deploy config must be updated to match — they don't share a monorepo, so this is not automatically kept in sync. Check with whoever owns the frontend repo before renaming either.
 
 ## Test status (baseline)
 
