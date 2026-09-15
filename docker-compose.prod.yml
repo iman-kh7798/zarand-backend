@@ -59,6 +59,9 @@ services:
     ports:
       # bound to localhost only — nginx on the host is the public entry point
       - "127.0.0.1:${BACKEND_PORT:-3000}:3000"
+    networks:
+      - default
+      - sevaa_shared
     volumes:
       - uploads_data:/app/uploads
       - logs_data:/app/logs
@@ -73,3 +76,12 @@ volumes:
   db_data:
   uploads_data:
   logs_data:
+
+networks:
+  # Shared with zarand/docker-compose.prod.yml so the frontend's Next.js
+  # server can reach this container directly ("zarand-backend:3000") instead
+  # of calling the public api.sevaa.ir domain from inside the same VPS
+  # (hairpin NAT — that call hangs instead of completing). Create once on the
+  # VPS before first deploy: `docker network create sevaa_shared`.
+  sevaa_shared:
+    external: true

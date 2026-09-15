@@ -93,6 +93,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key -p "${SSH_PORT_CLEAN}" "${user}@${SSH_HOST_CLEAN}" \
             "cd '${app_path}' && \
              sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/' .env && \
+             docker network inspect sevaa_shared >/dev/null 2>&1 || docker network create sevaa_shared && \
              docker compose -f docker-compose.prod.yml pull && \
              docker compose -f docker-compose.prod.yml up -d && \
              docker image prune -f"
