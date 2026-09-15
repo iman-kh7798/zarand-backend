@@ -10,6 +10,15 @@ This repo is indexed with `codebase-memory-mcp`. For any structural search (find
 
 `zarand-backend` — NestJS 11 + Prisma 7 (MySQL/MariaDB) backend for a local directory/marketplace: users, businesses, categories, images, reviews and favorites. Auth via SMS OTP (Kavenegar) and JWT.
 
+### Product context (why this exists)
+
+This backend is the **CMS/API for [sevaa.ir](https://sevaa.ir)** — a separately-hosted frontend (not in this repo). The product is a **local business directory** for a small city (Zarand, Iran), designed to expand to other cities later.
+
+- **Phase 1 goal:** business owners sign up and list their own business (currently limited to **one business per owner** — see `BUSINESS_LIMIT_EXCEEDED`); the public browses/searches listings by category, sees reviews, and can favorite/contact businesses.
+- **Two roles only:** `ADMIN` (site content/moderation — approves businesses, moderates reviews, manages the blog, sends notifications) and `OWNER` (manages their own business). There is no separate "regular user" role — anyone who signs up via OTP becomes an `OWNER` by default; they just may not have created a business yet.
+- **Already live on the domain**, so changes to this backend affect a running production product, not a prototype — treat backward compatibility with the deployed frontend and existing DB data as a real constraint, not a theoretical one.
+- **Current focus (as of 2026-09-15):** the user (repo owner, iman-kh7798) is doing a security/performance/architecture pass over the backend before adding new features. Findings and their status live in **`SECURITY_REVIEW.md`** at the repo root — check it at the start of any security/architecture-related task; it includes two critical unfixed items (OTP code leaked in `send-phone` response, hardcoded test phones with fixed OTP active in production).
+
 - Code language: TypeScript. Code comments are mostly in Persian — keep that style.
 - Working branch: `dev` (main branch: `master`). Push to `dev` triggers auto-deploy (see below).
 
