@@ -36,10 +36,9 @@ export class BusinessReviewController {
   async create(
     @Param('businessId') businessId: string,
     @Body() dto: CreateBusinessReviewDto,
-    @Req() req: { user: { sub: string } },
+    @Req() req: { user: { sub: string; role: Role } },
   ) {
-    const userId = req.user?.sub;
-    return this.service.createOrUpdate(businessId, userId, dto);
+    return this.service.createOrUpdate(businessId, req.user, dto);
   }
 
   // List reviews + average and count.

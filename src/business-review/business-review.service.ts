@@ -30,9 +30,10 @@ export class BusinessReviewService {
 
   async createOrUpdate(
     businessId: string,
-    userId: string,
+    actor: Actor,
     dto: CreateBusinessReviewDto,
   ) {
+    const userId = actor.sub;
     const business = await this.prisma.business.findUnique({
       where: { id: businessId },
       select: { id: true, ownerId: true, title: true },
@@ -41,6 +42,11 @@ export class BusinessReviewService {
 
     // ---- حالت «پاسخ» به یک نظر موجود ----
     if (dto.parentId) {
+      // فقط طبق رفتار کسب‌وکارهای بزرگ: صرفاً صاحب کسب‌وکار (یا ادمین) مجاز به پاسخ‌دادن است
+      if (actor.role !== Role.Admin && business.ownerId !== userId) {
+        throw new ForbiddenException('ONLY_OWNER_CAN_REPLY');
+      }
+
       const parent = await this.prisma.businessReview.findUnique({
         where: { id: dto.parentId },
         select: { id: true, businessId: true, parentId: true },
@@ -54,7 +60,6 @@ export class BusinessReviewService {
       }
       if (!dto.body?.trim()) throw new BadRequestException('BODY_REQUIRED');
 
-      // مالک کسب‌وکار هم مجاز است به نظرها پاسخ بدهد
       const reply = await this.prisma.businessReview.create({
         data: {
           body: dto.body,
