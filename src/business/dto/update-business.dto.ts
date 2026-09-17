@@ -58,8 +58,7 @@ export class FindBusinessQueryDto extends PartialType(PaginationDto) {
   categoryName?: string;
 
   @ApiPropertyOptional({
-    description:
-      'جست‌وجوی یکپارچه (OR) روی عنوان، توضیحات و نام مالک کسب‌وکار',
+    description: 'جست‌وجوی یکپارچه (OR) روی عنوان، توضیحات و نام مالک کسب‌وکار',
   })
   @IsOptional()
   @IsString()
@@ -88,4 +87,10 @@ export class UpdateBusinessStatusDto {
   @IsString()
   @MaxLength(500)
   reason?: string;
+}
+
+export class TransferBusinessOwnerDto {
+  @ApiProperty({ description: 'شناسه‌ی کاربرِ اونرِ جدید' })
+  @IsUUID()
+  ownerId: string;
 }

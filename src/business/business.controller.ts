@@ -22,6 +22,7 @@ import { BusinessService } from './business.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import {
   FindBusinessQueryDto,
+  TransferBusinessOwnerDto,
   UpdateBusinessDto,
   UpdateBusinessStatusDto,
 } from './dto/update-business.dto';
@@ -42,17 +43,26 @@ export class BusinessController {
 
   @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.Owner)
+  @Roles(Role.Admin, Role.Owner)
   @Post()
   @UseInterceptors(FilesInterceptor('files', 10))
   create(
-    @Req() req: { user: { sub: string } },
+    @Req() req: { user: { sub: string; role: Role } },
     @Body() dto: CreateBusinessDto,
     @UploadedFiles() files: Express.Multer.File[],
   ) {
-    const userId = req.user.sub;
     if (files?.length > 10) {
       throw new BadRequestException('BUSINESS_IMAGE_LIMIT_EXCEEDED');
+    }
+    // ادمین باید صریحاً یک اونر برای کسب‌وکار انتخاب کند؛ اونر خودش مالک می‌شود
+    let ownerId: string;
+    if (req.user.role === Role.Admin) {
+      if (!dto.ownerId) {
+        throw new BadRequestException('OWNER_REQUIRED_FOR_ADMIN_CREATE');
+      }
+      ownerId = dto.ownerId;
+    } else {
+      ownerId = req.user.sub;
     }
     // کسب‌وکار همین حالا ساخته می‌شود، پس تاریخ امروز مبنای پوشه است
     const uploads = files?.length
@@ -61,7 +71,7 @@ export class BusinessController {
           date: new Date(),
         })
       : [];
-    return this.businessService.create(dto, userId, uploads);
+    return this.businessService.create(dto, ownerId, uploads);
   }
 
   @ApiBearerAuth('access-token')
@@ -141,6 +151,17 @@ export class BusinessController {
   @Patch(':id/status')
   updateStatus(@Param('id') id: string, @Body() body: UpdateBusinessStatusDto) {
     return this.businessService.updateStatus(id, body);
+  }
+
+  @ApiBearerAuth('access-token')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @Patch(':id/transfer-owner')
+  transferOwner(
+    @Param('id') id: string,
+    @Body() body: TransferBusinessOwnerDto,
+  ) {
+    return this.businessService.transferOwner(id, body.ownerId);
   }
 
   @ApiBearerAuth('access-token')

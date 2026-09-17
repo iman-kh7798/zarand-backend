@@ -51,6 +51,14 @@ export class CreateBusinessDto {
   @IsOptional()
   categoryId?: string;
 
+  /**
+   * فقط وقتی سازنده ADMIN است استفاده می‌شود: مالکِ کسب‌وکار را مشخص می‌کند
+   * (باید کاربری با نقش OWNER باشد). برای OWNER نادیده گرفته می‌شود و خودش مالک است.
+   */
+  @IsUUID()
+  @IsOptional()
+  ownerId?: string;
+
   @IsNumberString()
   @IsOptional()
   lat?: string;

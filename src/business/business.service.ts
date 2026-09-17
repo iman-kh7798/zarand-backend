@@ -63,6 +63,20 @@ export class BusinessService {
     userId: string,
     uploads: { filename: string; path: string }[] = [],
   ) {
+    // مالک باید کاربری با نقش OWNER باشد (وقتی ادمین ownerId را صراحتاً انتخاب می‌کند)
+    const owner = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { role: true },
+    });
+    if (!owner) {
+      this.uploadService.removeMany(uploads.map((upload) => upload.path));
+      throw new NotFoundException('OWNER_NOT_FOUND');
+    }
+    if (owner.role.name !== (Role.Owner as string)) {
+      this.uploadService.removeMany(uploads.map((upload) => upload.path));
+      throw new BadRequestException('OWNER_MUST_HAVE_OWNER_ROLE');
+    }
+
     // هر کاربر فقط اجازه‌ی ثبت یک کسب‌وکار دارد
     const existingBusiness = await this.prisma.business.count({
       where: { ownerId: userId },
@@ -107,10 +121,6 @@ export class BusinessService {
       }
 
       // اعلان + پیامک برای ادمین‌ها (best-effort — خطا مانع ثبت نمی‌شود)
-      const owner = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { name: true },
-      });
       const content = notificationTemplates.BUSINESS_CREATED(
         business.title,
         owner?.name,
@@ -240,7 +250,9 @@ export class BusinessService {
     sort: BusinessSort = 'newest',
   ) {
     const include = {
-      owner: true,
+      // این لیست عمومی است (OptionalAuthGuard) — فقط فیلدهای غیرحساس مالک،
+      // نه رکورد کامل User (که passwordHash/email/metadata را هم می‌داد)
+      owner: { select: { id: true, name: true, phone: true } },
       BusinessImage: { orderBy: PRIMARY_IMAGE_ORDER },
       category: true,
     } as const;
@@ -378,7 +390,8 @@ export class BusinessService {
     const business = await this.prisma.business.findUnique({
       where: { id },
       include: {
-        owner: true,
+        // GET /business/:id هم عمومی است — همان محدودیت فیلد owner بالا
+        owner: { select: { id: true, name: true, phone: true } },
         BusinessImage: { orderBy: PRIMARY_IMAGE_ORDER },
         category: true,
         socialLinks: {
@@ -518,6 +531,42 @@ export class BusinessService {
     });
 
     return business;
+  }
+
+  /**
+   * انتقال مالکیت کسب‌وکار به یک اونر دیگر (فقط ADMIN). مالک جدید باید کاربری
+   * با نقش OWNER و بدون کسب‌وکار دیگر باشد (هر اونر فقط یک کسب‌وکار دارد).
+   */
+  async transferOwner(businessId: string, newOwnerId: string) {
+    const business = await this.prisma.business.findUnique({
+      where: { id: businessId },
+    });
+    if (!business) throw new NotFoundException('BUSINESS_NOT_FOUND');
+
+    if (business.ownerId === newOwnerId) {
+      throw new BadRequestException('BUSINESS_ALREADY_OWNED_BY_THIS_USER');
+    }
+
+    const newOwner = await this.prisma.user.findUnique({
+      where: { id: newOwnerId },
+      include: { role: true },
+    });
+    if (!newOwner) throw new NotFoundException('OWNER_NOT_FOUND');
+    if (newOwner.role.name !== (Role.Owner as string)) {
+      throw new BadRequestException('OWNER_MUST_HAVE_OWNER_ROLE');
+    }
+
+    const newOwnerHasBusiness = await this.prisma.business.count({
+      where: { ownerId: newOwnerId },
+    });
+    if (newOwnerHasBusiness > 0) {
+      throw new BadRequestException('NEW_OWNER_ALREADY_HAS_A_BUSINESS');
+    }
+
+    return this.prisma.business.update({
+      where: { id: businessId },
+      data: { ownerId: newOwnerId },
+    });
   }
 
   async remove(id: string) {
@@ -660,7 +709,7 @@ export class BusinessService {
       include: {
         business: {
           include: {
-            owner: true,
+            owner: { select: { id: true, name: true, phone: true } },
             BusinessImage: { orderBy: PRIMARY_IMAGE_ORDER },
             category: true,
           },

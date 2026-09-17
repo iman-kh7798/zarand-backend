@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto, UpdateUserDto } from './dto/update-user.dto';
@@ -112,7 +116,6 @@ export class UserService {
       data: {
         name: dto.name,
         phone: dto.phone,
-        role: dto.roleId ? { connect: { id: dto.roleId } } : undefined,
         // فقط وقتی پسورد جدید داریم، این فیلد رو ست کن
         ...(passwordHash && { passwordHash }),
         ...(dto.email ? { email: dto.email } : {}),
@@ -127,6 +130,19 @@ export class UserService {
   }
 
   async remove(id: string) {
+    // کاربری که صاحب کسب‌وکار است قابل حذف مستقیم نیست — باید کسب‌وکارش حذف
+    // یا مالکیتش به کاربر دیگری منتقل شود (وگرنه کسب‌وکار بی‌مالک می‌ماند).
+    const businesses = await this.prisma.business.findMany({
+      where: { ownerId: id },
+      select: { title: true },
+    });
+    if (businesses.length > 0) {
+      const titles = businesses.map((b) => `«${b.title}»`).join('، ');
+      throw new ConflictException(
+        `این کاربر صاحب کسب‌وکار ${titles} است. برای حذف کاربر، ابتدا کسب‌وکار را حذف کنید یا مالکیتش را به کاربر دیگری منتقل کنید.`,
+      );
+    }
+
     const user = await this.prisma.user.delete({
       where: { id },
       include: {

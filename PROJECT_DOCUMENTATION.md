@@ -111,9 +111,10 @@ seed.ts                  داده‌ی اولیه
 |---|---|---|
 | `/auth/send-phone`, `/auth/verify-code` | POST | عمومی |
 | `/business` | GET | عمومی — ناشناس فقط `APPROVED` می‌بیند، OWNER فقط کسب‌وکارهای خودش |
-| `/business` | POST | OWNER (multipart، تا ۱۰ تصویر) |
+| `/business` | POST | OWNER (خودش) / ADMIN (multipart، تا ۱۰ تصویر) — ADMIN باید `ownerId` (کاربر با نقش OWNER و بدون کسب‌وکار قبلی) بفرستد |
 | `/business/:id` | GET / PATCH / DELETE | عمومی / ADMIN و OWNER |
 | `/business/:id/status` | PATCH | ADMIN |
+| `/business/:id/transfer-owner` | PATCH | ADMIN — بدنه `{ ownerId }`، انتقال مالکیت به اونر دیگر |
 | `/business/:id/upload-images` | POST | OWNER |
 | `/business/:businessId/image/:imageId` | PATCH / DELETE | OWNER |
 | `/business/:id/favorite` | POST / DELETE | کاربر لاگین‌شده |
@@ -126,7 +127,7 @@ seed.ts                  داده‌ی اولیه
 | `/categories`, `/categories/:id`, `/categories/slug/:slug`, `/categories/:id/businesses` | GET | عمومی |
 | `/categories` | POST / PATCH / DELETE | ADMIN |
 | `/categories/business/set`, `/categories/business/:businessId` | POST / DELETE | ADMIN و OWNER |
-| `/users` | CRUD | ADMIN |
+| `/users` | CRUD | ADMIN — `PATCH /users/:id` دیگر `roleId` را قبول نمی‌کند (نقش فقط موقع ساخت تعیین می‌شود)؛ حذف کاربری که صاحب کسب‌وکار است با خطای ۴۰۹ (نام کسب‌وکار در پیام) رد می‌شود |
 | `/users/profile` | GET / POST | کاربر لاگین‌شده |
 | `/role` | GET | ADMIN |
 | `/business-image/*` | CRUD | OWNER و ADMIN |
@@ -174,7 +175,9 @@ seed.ts                  داده‌ی اولیه
 
 نکته: `datasource db` عمداً `url` ندارد؛ اتصال زمان اجرا از طریق driver adapter انجام می‌شود و `DATABASE_URL` فقط توسط Prisma CLI (از طریق `prisma.config.ts`) خوانده می‌شود.
 
-مایگریشن‌های موجود: `0_init` و `20260827120000_review_approval_and_remove_user_role` (افزودن `isApproved`/`approvedAt` و حذف نقش `USER`).
+مایگریشن‌های موجود: فهرست کامل و به‌روز در `CLAUDE.md` (بخش «Database / Prisma») نگه‌داری می‌شود. جدیدترین: `20260917120000_business_owner_restrict_delete` — رابطه‌ی `Business.owner` از `Cascade` به `Restrict` تغییر کرد تا کاربرِ صاحبِ کسب‌وکار قابل حذف مستقیم نباشد.
+
+⚠️ در دیپلوی VPS فعلی، `prisma migrate deploy` اجرا نمی‌شود — `docker/entrypoint.sh` به‌جایش `prisma db push` را روی هر ری‌استارت کانتینر اجرا می‌کند (پیش‌فرض `PRISMA_SCHEMA_STRATEGY=push`، و در `NODE_ENV=production` همیشه `db push`). یعنی همین که `schema.prisma` ویرایش و روی برنچ `dev` پوش شود، تغییر schema در دیپلوی بعدی **خودکار** روی دیتابیس اعمال می‌شود؛ نیازی به اجرای دستی migration روی سرور نیست. پوشه‌ی `prisma/migrations/` فقط برای `prisma migrate dev` محلی و مستندسازی نگه داشته می‌شود، نه منبع حقیقتِ دیپلوی.
 
 پس از تغییر اسکیما:
 

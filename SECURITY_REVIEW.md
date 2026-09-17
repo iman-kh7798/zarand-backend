@@ -36,6 +36,9 @@
 - [ ] **۵. `getAuthStatus` روی `/auth/send-phone` اطلاعات کاربر رو برای هر شماره‌ای فاش می‌کنه.**
   `src/users/users.service.ts` تابع `getAuthStatus` — برمی‌گردونه که آیا شماره ثبت‌نام کرده و پسورد داره یا نه. یک سطح user-enumeration هست. برای UX فرانت (تشخیص فلوی ثبت‌نام/ورود) لازمه، پس حذفش انتخاب اول نیست؛ ولی باید آگاهانه پذیرفته بشه و شاید محدودش کرد (مثلاً فقط `isNewUser` رو برگردونه، نه `hasPassword`).
 
+- [x] **۱۱. (رفع شد ۲۰۲۶-۰۹-۱۷، پیدا شد ضمن کار روی مدیریت کاربران/کسب‌وکار) `owner: true` توی لیست/جزئیات کسب‌وکار، `passwordHash` مالک رو عمومی می‌کرد.**
+  `src/business/business.service.ts` — `listBusinesses` (پشت `GET /business`)، `findOne` (پشت `GET /business/:id`) و `getFavorites` هر سه `include: { owner: true }` داشتن. این یعنی رکورد کاملِ `User` مالک — شامل `passwordHash` هش‌شده، ایمیل و `metadata` — توی جواب دو روت **کاملاً عمومی** (`OptionalAuthGuard`، بدون لاگین) برمی‌گشت. فیکس: `owner: { select: { id: true, name: true, phone: true } }` در هر سه‌جا. جزئیات کامل در بخش «Already done» ی `CLAUDE.md`.
+
 ---
 
 ## 🟡 بدهی فنی با اثر امنیتی/پرفورمنسی (از قبل در CLAUDE.md ثبت شده، اینجا برای تجمیع تکرار شده)
