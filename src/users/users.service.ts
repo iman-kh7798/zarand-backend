@@ -174,11 +174,8 @@ export class UserService {
         expiresAt: new Date(Date.now() + 5 * 60 * 1000), // کد 5 دقیقه اعتبار داره
       },
     });
-    // اینجا فقط ذخیره‌سازی انجام میشه، ارسال کد به کاربر رو باید با سرویس دیگه‌ای انجام بدی
-
-    // بیا فعلا برای تست کد رو بفرستیم به کاربر همینجا
     this.smsService.sendCode(phone, code);
-    return { message: `Verification code sent code: ${code}` };
+    return { message: 'Verification code sent' };
   }
 
   async updateProfile(id: string, dto: UpdateProfileDto) {

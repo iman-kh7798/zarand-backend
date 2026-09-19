@@ -203,7 +203,7 @@ Two tables: `Notification` (content + audience + status) and `NotificationRecipi
 ## Auth (OTP flow)
 
 `send-phone` → a 6-digit code is stored in the `Otp` table and texted → `verify-code` → if the user didn't exist they are created (`roleId: 2` = OWNER) and `{ access_token, isNewUser }` is returned.
-Test phone numbers in `auth.service.ts` (`testPhone`) work with the fixed code `123456` and no SMS.
+Every phone number, including old test numbers, now goes through the real Kavenegar SMS OTP flow — no hardcoded bypass (see "Already done" below).
 
 Token secret and expiry come from env (`JWT_SECRET` is required — the app fails to start without it — and `JWT_EXPIRES_IN` defaults to `3600s`). Both are read in `src/auth/constants.ts`.
 
@@ -238,6 +238,10 @@ This backend is consumed by a **separate repo**, `zarand-frontend` (Next.js, dep
 5. `ProductsModule` and `FavoriteBusinessModule` are intentionally commented out in `app.module.ts` and meant to be enabled later — don't uncomment them.
 
 ## Already done (don't repeat)
+
+- **OTP/SMS security fixes (2026-09-19)**: the two critical items from `SECURITY_REVIEW.md` are fixed.
+  - `saveVerificationCode` (`src/users/users.service.ts`) no longer returns the OTP code in the API response — it used to leak the code to anyone who knew a phone number (full account-takeover). Response is now just `{ message: 'Verification code sent' }`; the code only ever reaches the user via `SmsService.sendCode` (Kavenegar).
+  - The hardcoded `testPhone` whitelist (`['09212921488', '09376551218', '09302207762']`) and its fixed `123456` OTP bypass were removed entirely from `auth.service.ts` (`sendPhone`, `verifyCode`, `register`, `resetPassword`) — those numbers now go through the real SMS OTP flow like any other phone number, in every environment. The two spec tests in `auth.service.spec.ts` that asserted the bypass were removed along with it.
 
 - `gh_deploy_key` files were untracked from git and added to `.gitignore`. (User must rotate the key and purge git history.)
 - `env.example` was cleared of real values and turned into a full sample.

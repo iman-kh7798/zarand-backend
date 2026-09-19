@@ -150,16 +150,6 @@ describe('AuthService', () => {
       });
     });
 
-    it('returns the fixed test code for the whitelisted test phone number', async () => {
-      const result = await service.sendPhone('09212921488');
-
-      expect(result).toEqual({
-        code: '123456',
-        isNewUser: false,
-        hasPassword: false,
-      });
-      expect(userService.saveVerificationCode).not.toHaveBeenCalled();
-    });
   });
 
   describe('verifyCode', () => {
@@ -195,16 +185,6 @@ describe('AuthService', () => {
       expect(userService.create).toHaveBeenCalledWith(
         expect.objectContaining({ phone: user.phone, roleId: 2, name: null }),
       );
-      expect(result).toEqual({ access_token: 'signed-jwt-token' });
-    });
-
-    it('accepts the hardcoded test OTP even without a matching stored otp', async () => {
-      userService.findValidOtp!.mockResolvedValue(null);
-      userService.findByPhone!.mockResolvedValue(user);
-      roleService.findOne!.mockResolvedValue(role);
-
-      const result = await service.verifyCode('09212921488', '123456');
-
       expect(result).toEqual({ access_token: 'signed-jwt-token' });
     });
   });

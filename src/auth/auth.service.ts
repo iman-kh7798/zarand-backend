@@ -21,8 +21,6 @@ export class AuthService {
     private notificationService: NotificationService,
   ) {}
 
-  testPhone = ['09212921488', '09376551218', '09302207762'];
-
   async signUp(name: string, phone: string, pass: string): Promise<any> {
     let user:
       | { phone: string; roleId: number; id: string; name: string | null }
@@ -62,18 +60,14 @@ export class AuthService {
     const { isNewUser, hasPassword } =
       await this.usersService.getAuthStatus(phone);
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    if (this.testPhone.includes(phone)) {
-      return { code: '123456', isNewUser, hasPassword };
-    }
     const result = await this.usersService.saveVerificationCode(phone, code);
     return { ...result, isNewUser, hasPassword };
   }
 
   async verifyCode(phone: string, code: string) {
     let isNewUser: boolean = false;
-    const isTestOtp = this.testPhone.includes(phone) && code === '123456';
     const otp = await this.usersService.findValidOtp(phone, code);
-    if (!otp && !isTestOtp) {
+    if (!otp) {
       throw new UnauthorizedException('INVALID_OR_EXPIRED_CODE');
     }
     let user = await this.usersService.findByPhone(phone);
@@ -110,9 +104,8 @@ export class AuthService {
   async register(dto: SignUpDto) {
     const { phone, password, name, code } = dto;
 
-    const isTestOtp = this.testPhone.includes(phone) && code === '123456';
     const otp = await this.usersService.findValidOtp(phone, code);
-    if (!otp && !isTestOtp) {
+    if (!otp) {
       throw new UnauthorizedException('INVALID_OR_EXPIRED_CODE');
     }
 
@@ -181,9 +174,8 @@ export class AuthService {
    * پسورد جدید رو ست می‌کنه و مستقیم توکن برمی‌گردونه (لاگین خودکار بعد از ریست).
    */
   async resetPassword(phone: string, code: string, newPassword: string) {
-    const isTestOtp = this.testPhone.includes(phone) && code === '123456';
     const otp = await this.usersService.findValidOtp(phone, code);
-    if (!otp && !isTestOtp) {
+    if (!otp) {
       throw new UnauthorizedException('INVALID_OR_EXPIRED_CODE');
     }
 
