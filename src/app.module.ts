@@ -21,6 +21,7 @@ import { BusinessReportModule } from './business-report/business-report.module';
 import { BusinessEventModule } from './business-event/business-event.module';
 import { BlogModule } from './blog/blog.module';
 import { NotificationModule } from './notification/notification.module';
+import { AdminModule } from './admin/admin.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { WinstonModule } from 'nest-winston';
@@ -58,6 +59,7 @@ import { winstonConfig } from './config/winston.config';
     BusinessReportModule,
     BlogModule,
     NotificationModule,
+    AdminModule,
     WinstonModule.forRoot(winstonConfig),
     // FavoriteBusinessModule,
   ],
