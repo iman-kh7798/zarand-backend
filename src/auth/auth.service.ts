@@ -197,6 +197,11 @@ export class AuthService {
     return { access_token: await this.jwtService.signAsync(payload) };
   }
 
+  /** خروج از حساب — چون توکن JWT بدون state سمت سرور است، فقط پیام موفقیت برمی‌گرداند */
+  logout() {
+    return { message: 'LOGGED_OUT' };
+  }
+
   /** خوش‌آمدگویی به کاربر تازه — best-effort، ثبت‌نام را به خطر نمی‌اندازد */
   private async sendWelcome(userId: string, name: string | null) {
     const content = notificationTemplates.USER_WELCOME(name);

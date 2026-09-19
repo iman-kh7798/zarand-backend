@@ -1,5 +1,14 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import {
   ResetPasswordDto,
@@ -55,5 +64,15 @@ export class AuthController {
       resetPassword.code,
       resetPassword.newPassword,
     );
+  }
+
+  // خروج از حساب — احراز هویت stateless (JWT) است پس چیزی روی سرور باطل نمی‌شود؛
+  // این مسیر فقط برای هماهنگی با کلاینت (و امکان لاگ/بلک‌لیست در آینده) وجود دارد
+  @ApiBearerAuth('access-token')
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('logout')
+  logout() {
+    return this.authService.logout();
   }
 }
