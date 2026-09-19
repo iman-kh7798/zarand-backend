@@ -399,6 +399,7 @@ model BusinessReport {
 
   @@index([businessId, createdAt])
   @@index([status, createdAt])
+  @@index([isRead, createdAt])
 }
 
 /// نوع رویداد سبک روی پروفایل کسب‌وکار (آنالیتیکس)
